@@ -2111,3 +2111,70 @@ body.lobby-mode .start-panel{
   .lobby-wallet{max-width:42vw}
   .lobby-wallet b{max-width:9ch}
 }
+
+/* v4.11 startup resource loader */
+html.boot-loading,html.boot-loading body{overflow:hidden}
+.boot-loader{
+  position:fixed;inset:0;z-index:99999;
+  display:grid;place-items:center;
+  padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));
+  box-sizing:border-box;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(34,130,89,.22),transparent 36%),
+    linear-gradient(145deg,#04120d 0%,#071d14 48%,#03100b 100%);
+  color:#f5fff9;
+  font-family:"Noto Sans SC",system-ui,sans-serif;
+  opacity:1;visibility:visible;
+  transition:opacity .28s ease,visibility .28s ease;
+}
+.boot-loader::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.28;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+.boot-loader.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
+.boot-loader-inner{
+  position:relative;width:min(480px,100%);box-sizing:border-box;
+  padding:30px 28px 25px;border:1px solid rgba(178,236,205,.18);border-radius:24px;
+  background:linear-gradient(180deg,rgba(13,42,29,.9),rgba(5,23,15,.94));
+  box-shadow:0 24px 80px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.05);
+  text-align:center;overflow:hidden;
+}
+.boot-loader-inner::after{
+  content:"";position:absolute;left:10%;right:10%;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(127,226,171,.75),transparent);
+}
+.boot-loader-suits{display:flex;justify-content:center;gap:14px;margin-bottom:10px;font-size:22px;line-height:1}
+.boot-loader-suits span:nth-child(2),.boot-loader-suits span:nth-child(4){color:#ff6b78}
+.boot-loader-suits span:nth-child(1),.boot-loader-suits span:nth-child(3){color:#83e2ad}
+.boot-loader-kicker{font-family:"Bebas Neue",sans-serif;letter-spacing:5px;font-size:14px;color:#8edbb1}
+.boot-loader-title{margin-top:2px;font-family:"Ma Shan Zheng","Noto Sans SC",sans-serif;font-size:clamp(38px,9vw,58px);line-height:1.12;letter-spacing:4px;text-shadow:0 5px 24px rgba(0,0,0,.35)}
+.boot-loader-status{margin-top:14px;font-size:14px;font-weight:700;color:#d9f7e6}
+.boot-loader-track{height:10px;margin-top:18px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.09);box-shadow:inset 0 1px 4px rgba(0,0,0,.3)}
+.boot-loader-bar{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#3fbd7a,#93e8b9);box-shadow:0 0 18px rgba(92,213,143,.35);transition:width .2s ease}
+.boot-loader-meta{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-family:"Bebas Neue","Noto Sans SC",sans-serif;letter-spacing:1px;color:#a8ccb8}
+.boot-loader-percent{font-size:22px;color:#e9fff2}
+.boot-loader-count{font-size:16px;padding-top:4px}
+.boot-loader-current{min-height:20px;margin-top:3px;font-size:12px;color:#87aa97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boot-loader-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+.boot-loader-skip,.boot-loader-retry{
+  min-height:44px;padding:10px 18px;border-radius:999px;font:700 13px/1 "Noto Sans SC",sans-serif;cursor:pointer;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+}
+.boot-loader-skip{border:1px solid rgba(191,231,209,.28);background:rgba(255,255,255,.06);color:#d8eee2}
+.boot-loader-retry{border:1px solid rgba(111,220,158,.5);background:rgba(58,171,108,.18);color:#e8fff2}
+.boot-loader-skip:hover,.boot-loader-retry:hover{transform:translateY(-1px);border-color:rgba(146,235,184,.72)}
+.boot-loader-skip:focus-visible,.boot-loader-retry:focus-visible{outline:3px solid rgba(144,232,181,.42);outline-offset:3px}
+.boot-loader-note{margin-top:14px;font-size:11px;line-height:1.55;color:#688779}
+@media(max-width:520px){
+  .boot-loader-inner{padding:25px 18px 21px;border-radius:20px}
+  .boot-loader-title{letter-spacing:2px}
+  .boot-loader-suits{gap:11px}
+  .boot-loader-actions{align-items:stretch}
+  .boot-loader-skip,.boot-loader-retry{flex:1 1 170px}
+}
+@media(prefers-reduced-motion:reduce){
+  .boot-loader,.boot-loader-bar,.boot-loader-skip,.boot-loader-retry{transition:none!important}
+}

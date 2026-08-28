@@ -12,6 +12,25 @@
 <link rel="stylesheet" href="assets/css/game.css">
 </head>
 <body>
+<div class="boot-loader" id="bootLoader" role="progressbar" aria-label="游戏资源加载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="boot-loader-inner">
+    <div class="boot-loader-suits" aria-hidden="true"><span>♠</span><span>♥</span><span>♣</span><span>♦</span></div>
+    <div class="boot-loader-kicker">PARTY CARD</div>
+    <div class="boot-loader-title">欢乐牌局</div>
+    <div class="boot-loader-status" data-loader-status>正在准备牌桌资源…</div>
+    <div class="boot-loader-track" aria-hidden="true"><div class="boot-loader-bar" data-loader-bar></div></div>
+    <div class="boot-loader-meta">
+      <span class="boot-loader-percent" data-loader-percent>0%</span>
+      <span class="boot-loader-count" data-loader-count>0 / 0</span>
+    </div>
+    <div class="boot-loader-current" data-loader-current aria-live="polite">建立资源队列</div>
+    <div class="boot-loader-actions">
+      <button type="button" class="boot-loader-retry" data-loader-retry hidden>重试加载</button>
+      <button type="button" class="boot-loader-skip" data-loader-skip>跳过，边玩边加载</button>
+    </div>
+    <div class="boot-loader-note">完整加载后进入可避免头像、字体等资源在对局中延迟出现。</div>
+  </div>
+</div>
 <div class="table">
   <div class="topbar">
     <div class="round-chip">第 <b id="roundNo">1</b> 轮</div>
@@ -273,6 +292,7 @@
 
 <div class="toast" id="toast"></div>
 <div class="save-code-mask" id="saveCodeMask"><div class="save-code-panel"><div class="save-code-head"><div><b id="saveCodeTitle">存档码</b><span id="saveCodeHint">复制后可在其他设备恢复</span></div><button type="button" id="saveCodeClose">×</button></div><textarea id="saveCodeText" spellcheck="false" placeholder="在这里粘贴存档码"></textarea><div class="save-code-actions"><button class="btn btn-sort" id="saveCodeCopy">复制存档码</button><button class="btn btn-play" id="saveCodeApply">导入此存档码</button></div></div></div>
+<script src="assets/js/loader.js" defer></script>
 <script src="assets/js/game.js" defer></script>
 </body>
 </html>
