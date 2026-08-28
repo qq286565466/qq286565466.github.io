@@ -61,11 +61,11 @@ const FIELDS = [
 let G = null;
 let selected = new Set();
 let aiTimer = null;
-const PLAYER_AVATAR="./assets/avatars/avatar-1-02b1108d.png";
+const PLAYER_AVATAR="./assets/avatars/avatar-player-modern.webp";
 const OPPONENTS=[
-  {name:"福掌柜",avatar:"./assets/avatars/avatar-2-a2603c90.png"},
-  {name:"阿岚",avatar:"./assets/avatars/avatar-3-8c5b7881.png"},
-  {name:"顾老",avatar:"./assets/avatars/avatar-4-3cade4dc.png"},
+  {name:"福掌柜",avatar:"./assets/avatars/opponent-fuzhanggui-modern.webp"},
+  {name:"阿岚",avatar:"./assets/avatars/opponent-alan-modern.webp"},
+  {name:"顾老",avatar:"./assets/avatars/opponent-gulao-modern.webp"},
   {name:"公子",avatar:"./assets/avatars/opponent-gongzi-transparent.png"},
   {name:"术士",avatar:"./assets/avatars/opponent-shushi-transparent.png"},
   {name:"影剑",avatar:"./assets/avatars/opponent-yingjian.webp"},
@@ -74,7 +74,7 @@ const OPPONENTS=[
   {name:"紫弦",avatar:"./assets/avatars/opponent-zixian.webp"}
 ];
 // 兼容旧存档：没有 player.avatar 时仍按座位使用原始头像。
-const AVATARS=[PLAYER_AVATAR,"./assets/avatars/avatar-2-a2603c90.png","./assets/avatars/avatar-3-8c5b7881.png","./assets/avatars/avatar-4-3cade4dc.png"];
+const AVATARS=[PLAYER_AVATAR,"./assets/avatars/opponent-fuzhanggui-modern.webp","./assets/avatars/opponent-alan-modern.webp","./assets/avatars/opponent-gulao-modern.webp"];
 const expIntel=new Set();
 let _modalIsChoice=false;
 

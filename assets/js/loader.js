@@ -2,10 +2,10 @@
   "use strict";
 
   const IMAGE_RESOURCES = [
-    "assets/avatars/avatar-1-02b1108d.png",
-    "assets/avatars/avatar-2-a2603c90.png",
-    "assets/avatars/avatar-3-8c5b7881.png",
-    "assets/avatars/avatar-4-3cade4dc.png",
+    "assets/avatars/avatar-player-modern.webp",
+    "assets/avatars/opponent-fuzhanggui-modern.webp",
+    "assets/avatars/opponent-alan-modern.webp",
+    "assets/avatars/opponent-gulao-modern.webp",
     "assets/avatars/opponent-gongzi-transparent.png",
     "assets/avatars/opponent-shushi-transparent.png",
     "assets/avatars/opponent-yingjian.webp",
