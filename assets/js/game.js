@@ -1,4 +1,4 @@
-"use strict";
+﻿"use strict";
 
 const SUITS = ["♠","♥","♣","♦"];
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
@@ -210,7 +210,7 @@ function renderStoredBalance(){
 }
 const SAVE_FILE_MAGIC="happy-card-game-save";
 const SAVE_FILE_VERSION=1;
-const SAVE_BUILD="v4.8";
+const SAVE_BUILD="v4.9";
 const SAVE_CODE_PREFIX="HCG1-";
 
 function buildPortableSave(){
@@ -4258,3 +4258,4 @@ updateLobbyRooms();
 
 // v4.7 compact menu auto-close
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".lobby-more-menu button,.topbar-more-menu button").forEach(btn=>btn.addEventListener("click",()=>btn.closest("details")?.removeAttribute("open")));});
+

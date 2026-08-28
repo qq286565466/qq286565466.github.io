@@ -1927,3 +1927,58 @@ button:disabled{opacity:.42}
   #hand{min-height:60px!important;max-height:64px;padding-top:7px!important}#hand .card{width:42px!important;height:58px!important}
   .sel-text{display:none!important}.actions .btn{height:34px!important;min-height:34px!important;font-size:9px!important}.bottom-zone{padding-top:2px!important;gap:2px!important}
 }
+/* ---------- v4.9 mobile minimal UI ---------- */
+@media(max-width:620px){
+  /* lobby: remove secondary decoration/text */
+  .lobby{gap:6px!important;padding:6px 6px calc(8px + env(safe-area-inset-bottom))!important}
+  .lobby-top{padding:7px 8px!important;border-radius:14px!important;box-shadow:none!important;border-color:rgba(255,255,255,.05)!important}
+  .lobby-brand .title{font-size:26px!important;letter-spacing:1px!important;text-shadow:none!important;filter:none!important}
+  .lobby-brand .subtitle{display:none!important}
+  .lobby-wallet{min-width:96px!important;padding:5px 7px!important;border-radius:11px!important;box-shadow:none!important}
+  .wallet-gem{display:none!important}.wallet-label{font-size:7px!important}.lobby-wallet b{font-size:14px!important}
+  .room-stage{padding:5px!important;border-radius:14px!important;gap:5px!important;background:rgba(2,20,11,.26)!important;border-color:rgba(255,255,255,.04)!important}
+  .room-stage-head{padding:1px 3px!important}.room-stage-title{font-size:11px!important}.room-stage-suits{display:none!important}
+  .room-list{gap:5px!important}
+  .room-card{min-height:78px!important;padding:6px 56px 6px 56px!important;border-radius:13px!important;border-width:1px!important;box-shadow:none!important}
+  .room-card::before{opacity:.55}.room-card::after{display:none!important}
+  .room-icon{left:28px!important;width:38px!important;height:38px!important;font-size:22px!important;border-radius:11px!important;box-shadow:none!important}
+  .room-name{font-size:17px!important}.room-stake{margin-top:3px!important;padding:0!important;background:none!important;border:0!important;font-size:8px!important}.room-stake b{font-size:12px!important}.room-entry,.room-tag{display:none!important}
+  .room-enter{right:5px!important;width:47px!important;padding:6px 3px!important;border-radius:8px!important;font-size:7px!important;box-shadow:none!important}
+  .lobby-bottom{gap:5px!important;padding:5px!important;border-radius:14px!important;background:rgba(3,23,12,.48)!important;box-shadow:none!important}
+  .skill-picker-trigger{min-height:40px!important;border-radius:10px!important;padding:5px 7px!important;box-shadow:none!important}
+  .skill-picker-emblem{width:25px!important;height:25px!important;flex-basis:25px!important;border-radius:7px!important;box-shadow:none!important}.skill-picker-hint{display:none!important}.skill-picker-name{font-size:11px!important}.skill-picker-arrow{border:0!important;background:none!important;width:18px!important;height:18px!important}
+  .lobby-more>summary{height:36px!important;min-height:36px!important;border-radius:10px!important;padding:5px 7px!important;box-shadow:none!important}.more-icon{width:22px!important;height:22px!important;flex-basis:22px!important;background:none!important;border:0!important}.lobby-more>summary small{display:none!important}.lobby-more>summary b{font-size:10px!important}.more-arrow{font-size:12px!important}
+  .lobby-tip{display:none!important}
+
+  /* top status: icon actions and flat chips */
+  .topbar{min-height:36px!important;padding:3px 4px!important;gap:3px!important;border-bottom:1px solid rgba(255,255,255,.05)!important;box-shadow:none!important}
+  .round-chip,.field-chip,.mult-badge{background:transparent!important;border-color:rgba(255,255,255,.07)!important;box-shadow:none!important;padding:3px 5px!important;border-radius:7px!important}
+  .field-chip{border-left:0!important;border-right:0!important}.mult-badge{white-space:nowrap}
+  .topbar-more>summary,#logToggleBtn,#restartBtn{font-size:0!important;color:#dce9df!important;background:transparent!important;border-color:rgba(255,255,255,.08)!important;box-shadow:none!important}
+  .topbar-more>summary::before{content:'⋯';font-size:18px!important;line-height:1}
+  #logToggleBtn::before{content:'☰';font-size:13px!important;line-height:1}
+  #restartBtn::before{content:'×';font-size:18px!important;line-height:1}
+  .compact-actions>.icon-btn,.topbar-more>summary{width:27px!important;min-width:27px!important;height:27px!important;border-radius:7px!important}
+  .topbar-more-menu{top:38px!important;border-radius:12px!important;box-shadow:0 12px 28px rgba(0,0,0,.42)!important}.topbar-more-menu .icon-btn{font-size:10px!important}
+
+  /* game bottom: cleaner two-level action hierarchy */
+  .bottom-zone{padding:3px 4px calc(4px + env(safe-area-inset-bottom))!important;gap:3px!important;box-shadow:none!important;border-top-color:rgba(255,255,255,.05)!important}
+  #hand{min-height:70px!important;max-height:74px!important;padding:10px 9px 3px!important;scroll-padding-inline:9px}
+  #hand .card{width:46px!important;height:65px!important;margin-left:-8px!important}
+  .sel-text{font-size:7px!important;line-height:14px!important;min-height:14px!important;color:#8da294!important}
+  .actions{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:3px!important}
+  .actions .btn{height:36px!important;min-height:36px!important;border-radius:8px!important;font-size:9px!important;padding:4px 2px!important;box-shadow:none!important}
+  #passBtn{grid-column:span 2}#hintBtn{grid-column:span 2}#playBtn{grid-column:span 2;font-size:10px!important}
+  #skillBtn{grid-column:span 3;height:30px!important;min-height:30px!important;background:rgba(116,84,30,.38)!important}
+  #sortBtn{grid-column:span 3;height:30px!important;min-height:30px!important;background:rgba(30,82,48,.45)!important}
+}
+
+@media(max-width:370px){
+  .lobby-brand .title{font-size:23px!important}.room-card{min-height:74px!important;padding-left:52px!important;padding-right:52px!important}.room-icon{left:26px!important;width:35px!important;height:35px!important;font-size:20px!important}.room-enter{width:44px!important}.room-name{font-size:16px!important}
+  .round-chip,.field-chip,.mult-badge{font-size:7px!important}.compact-actions>.icon-btn,.topbar-more>summary{width:25px!important;min-width:25px!important;height:25px!important}
+  #hand{min-height:66px!important;max-height:70px!important}#hand .card{width:43px!important;height:61px!important}.actions .btn{font-size:8px!important}
+}
+
+@media(max-width:620px) and (orientation:landscape){
+  .topbar{min-height:31px!important}.bottom-zone{gap:2px!important}#hand{min-height:55px!important;max-height:58px!important;padding-top:5px!important}#hand .card{width:40px!important;height:55px!important}.actions .btn{height:31px!important;min-height:31px!important}#skillBtn,#sortBtn{height:27px!important;min-height:27px!important}
+}
