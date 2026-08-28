@@ -1982,3 +1982,72 @@ button:disabled{opacity:.42}
 @media(max-width:620px) and (orientation:landscape){
   .topbar{min-height:31px!important}.bottom-zone{gap:2px!important}#hand{min-height:55px!important;max-height:58px!important;padding-top:5px!important}#hand .card{width:40px!important;height:55px!important}.actions .btn{height:31px!important;min-height:31px!important}#skillBtn,#sortBtn{height:27px!important;min-height:27px!important}
 }
+
+/* ---------- v4.10 UI consolidation + bug fixes ---------- */
+/* shared overlays: avoid viewport overflow */
+.topbar-more-menu,.lobby-more-menu{max-height:min(70vh,420px);overflow:auto;overscroll-behavior:contain}
+.sheet{max-height:min(86dvh,760px)}
+.save-code-panel{max-height:min(88dvh,760px)}
+
+/* desktop/tablet: slightly cleaner spacing and more stable widths */
+@media(min-width:621px){
+  .topbar{padding-inline:clamp(8px,1.4vw,16px)}
+  .field-chip{min-width:0;max-width:min(46vw,560px)}
+  .lobby{min-height:100dvh}
+  .room-card{contain:layout paint}
+  .lobby-bottom{align-items:center!important}
+  .skill-picker-trigger,.lobby-more>summary{overflow:hidden}
+  .skill-picker-name,.lobby-more>summary b,.lobby-more>summary small{min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+
+/* phone: final stable layout layer */
+@media(max-width:620px){
+  body{overflow:hidden}
+  .topbar{padding-left:calc(4px + env(safe-area-inset-left))!important;padding-right:calc(4px + env(safe-area-inset-right))!important}
+  .topbar>*{min-width:0}
+  .field-chip strong{display:block;min-width:0;max-width:100%!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-more-menu{top:calc(38px + env(safe-area-inset-top))!important;right:calc(6px + env(safe-area-inset-right))!important;max-height:calc(100dvh - 50px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto}
+  .lobby-more-menu{left:calc(6px + env(safe-area-inset-left))!important;right:calc(6px + env(safe-area-inset-right))!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto}
+
+  /* BUGFIX: horizontal hand scrolling was clipping the selected-card lift */
+  #hand{padding-top:13px!important;scrollbar-width:none}
+  #hand .card.selected{transform:translateY(-7px)!important;box-shadow:0 7px 14px rgba(0,0,0,.42)!important;z-index:12}
+  #hand .card{transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+
+  /* stable five-button hierarchy without label spill */
+  .actions{align-items:stretch!important}
+  .actions .btn{min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  #passBtn,#hintBtn,#playBtn{grid-column:span 2!important}
+  #skillBtn,#sortBtn{grid-column:span 3!important}
+
+  /* keep player labels/cards inside the arena */
+  .players{overflow:hidden}
+  .player{max-width:29vw}
+  .player .name,.player .skill-name,.player .small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .center-stage{max-width:58vw!important}
+  .last-play{max-width:100%!important;overflow:visible}
+
+  /* modal/save-code UI follows phone safe areas and stays scrollable */
+  .modal{padding-top:env(safe-area-inset-top)}
+  .sheet{width:100%;max-height:calc(100dvh - env(safe-area-inset-top));overscroll-behavior:contain}
+  .save-code-mask{padding:calc(8px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+  .save-code-panel{width:100%;max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));border-radius:14px;padding:12px}
+  #saveCodeText{min-height:150px;max-height:42dvh;font-size:11px}
+
+  /* avoid tiny-screen vertical collisions */
+  .arena{overflow:hidden}
+  .bottom-zone{z-index:8}
+}
+
+@media(max-width:370px){
+  .center-stage{max-width:52vw!important}
+  #hand{padding-top:12px!important}
+  #hand .card.selected{transform:translateY(-6px)!important}
+  .actions .btn{letter-spacing:0!important}
+}
+
+@media(max-width:620px) and (orientation:landscape){
+  .topbar-more-menu{top:calc(32px + env(safe-area-inset-top))!important}
+  #hand .card.selected{transform:translateY(-4px)!important}
+  .sheet{max-height:calc(100dvh - env(safe-area-inset-top))}
+}

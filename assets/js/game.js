@@ -210,7 +210,7 @@ function renderStoredBalance(){
 }
 const SAVE_FILE_MAGIC="happy-card-game-save";
 const SAVE_FILE_VERSION=1;
-const SAVE_BUILD="v4.9";
+const SAVE_BUILD="v4.10";
 const SAVE_CODE_PREFIX="HCG1-";
 
 function buildPortableSave(){
@@ -4258,4 +4258,17 @@ updateLobbyRooms();
 
 // v4.7 compact menu auto-close
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".lobby-more-menu button,.topbar-more-menu button").forEach(btn=>btn.addEventListener("click",()=>btn.closest("details")?.removeAttribute("open")));});
+
+
+// v4.10 UI: compact menus close consistently on outside click / Escape / resize.
+(function initCompactMenuDismiss(){
+  const closeMenus=()=>document.querySelectorAll("details.topbar-more[open],details.lobby-more[open]").forEach(el=>el.removeAttribute("open"));
+  document.addEventListener("pointerdown",e=>{
+    document.querySelectorAll("details.topbar-more[open],details.lobby-more[open]").forEach(el=>{
+      if(!el.contains(e.target))el.removeAttribute("open");
+    });
+  },true);
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenus();});
+  window.addEventListener("resize",closeMenus,{passive:true});
+})();
 
