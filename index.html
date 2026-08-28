@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#062014" />
+<meta name="description" content="欢乐牌局：支持 1 人对战 3 名 AI 的浏览器卡牌游戏。" />
+<title>欢乐牌局 V0.31 · 1人 vs 3AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&display=swap">
+<link rel="stylesheet" href="assets/css/game.css">
+</head>
+<body>
+<div class="table">
+  <div class="topbar">
+    <div class="round-chip">第 <b id="roundNo">1</b> 轮</div>
+    <div class="field-chip"><strong id="fieldName">无场地</strong><span class="small" id="fieldDesc">第5、10、15…轮结束时抽取新场地</span></div>
+    <div class="round-chip" id="roomBadge">普通场</div>
+    <div class="mult-badge" id="multBadge" style="margin-left:auto">倍数 <span class="mult-num" id="multNum">1</span>×</div>
+    <div class="topbar-actions compact-actions">
+      <details class="topbar-more">
+        <summary class="icon-btn" title="菜单">☰</summary>
+        <div class="topbar-more-menu">
+          <button class="icon-btn audio-btn" id="sfxToggleBtn" title="音效开关">🔊 音效</button>
+          <button class="icon-btn audio-btn" id="musicToggleBtn" title="音乐开关">🎵 音乐</button>
+          <button class="icon-btn" id="saveExportTopBtn" title="生成存档码">▣ 生成存档码</button>
+          <button class="icon-btn" id="saveImportTopBtn" title="输入存档码">↥ 输入存档码</button>
+          <button class="icon-btn admin-btn" id="adminBtn" title="管理员">⚙ 管理员</button>
+        </div>
+      </details>
+      <button class="icon-btn" id="logToggleBtn" title="对局日志">☷</button>
+      <button class="icon-btn" id="restartBtn" title="退出对局">↩</button>
+    </div>
+  </div>
+
+  <div class="start-panel" id="startPanel">
+    <div class="lobby">
+      <div class="lobby-top">
+        <div class="lobby-brand">
+          <div class="lobby-kicker"><span>♠</span> PARTY CARD <span>♥</span></div>
+          <div class="title">欢乐牌局</div>
+          <div class="subtitle">1人 VS 3AI <span class="version-dot">·</span> V0.31 <span class="version-dot">·</span> Build v4.8</div>
+        </div>
+        <div class="lobby-wallet">
+          <span class="wallet-gem">🔮</span>
+          <span class="wallet-copy"><span class="wallet-label">我的星石</span><b id="storedBalance">2000</b></span>
+          <span class="wallet-plus">＋</span>
+        </div>
+      </div>
+
+      <div class="room-stage">
+        <div class="room-stage-head">
+          <div>
+            <div class="room-stage-title">选择牌桌</div>
+            <div class="room-stage-sub">不同场次只改变底注与入场门槛</div>
+          </div>
+          <div class="room-stage-suits">♣ <span>♦</span> ♠ <span>♥</span></div>
+        </div>
+        <div class="room-list" id="roomList">
+          <div class="room-card beginner" data-room="beginner" data-tier="轻松">
+            <div class="room-icon">🌱</div>
+            <div class="room-content">
+              <div class="room-name">新手场</div>
+              <div class="room-tag">轻松试牌 · 低风险</div>
+              <div class="room-stake">底注 <b>20</b> 🔮</div>
+              <div class="room-entry">不限星石 · 适合熟悉玩法</div>
+              <div class="room-enter">进入牌桌</div>
+            </div>
+          </div>
+          <div class="room-card normal" data-room="normal" data-tier="标准">
+            <div class="room-icon">♣️</div>
+            <div class="room-content">
+              <div class="room-name">普通场</div>
+              <div class="room-tag">标准牌局 · 常规收益</div>
+              <div class="room-stake">底注 <b>100</b> 🔮</div>
+              <div class="room-entry">500 星石以上可入场</div>
+              <div class="room-enter">进入牌桌</div>
+            </div>
+          </div>
+          <div class="room-card advanced" data-room="advanced" data-tier="高阶">
+            <div class="room-icon">👑</div>
+            <div class="room-content">
+              <div class="room-name">高级场</div>
+              <div class="room-tag">高倍对局 · 高风险</div>
+              <div class="room-stake">底注 <b>500</b> 🔮</div>
+              <div class="room-entry">2000 星石以上可入场</div>
+              <div class="room-enter">进入牌桌</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby-bottom">
+        <div class="lobby-skill">
+          <div class="lobby-control-title"><span class="control-dot"></span>本局配置</div>
+          <div class="lobby-skill-label">选择技能</div>
+          <select id="skillSelect" class="skill-select" aria-hidden="true"></select>
+          <button type="button" id="skillPickerBtn" class="skill-picker-trigger">
+            <span class="skill-picker-emblem">✦</span>
+            <span class="skill-picker-copy">
+              <span class="skill-picker-name" id="skillPickerName">🎲 随机技能</span>
+              <span class="skill-picker-hint" id="skillPickerHint">点击打开技能选择</span>
+            </span>
+            <span class="skill-picker-arrow">›</span>
+          </button>
+        </div>
+        <details class="lobby-more">
+          <summary><span class="more-icon">•••</span><span><b>更多功能</b><small>规则 · 图鉴 · 存档</small></span><span class="more-arrow">›</span></summary>
+          <div class="lobby-more-menu">
+            <button class="btn btn-sort" id="rulesBtn"><span class="tool-icon">?</span>玩法规则</button>
+            <button class="btn btn-skill" id="codexBtn"><span class="tool-icon">✦</span>技能 / 场地图鉴</button>
+            <button class="btn btn-sort" id="saveExportBtn"><span class="tool-icon">▣</span>生成存档码</button>
+            <button class="btn btn-sort" id="saveImportBtn"><span class="tool-icon">↥</span>输入存档码</button>
+          </div>
+        </details>
+        <div class="lobby-tip"><span>●</span> 选择场次即可开始对局 <i></i> 技能在入场前可随时更换</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="game" class="hidden table-stage">
+    <div class="arena">
+      <div class="players" id="players"></div>
+      <div class="center-stage">
+        <div class="turn-ind">
+          <div class="ti-label">当前行动</div>
+          <div class="ti-name" id="turnText">你</div>
+          <div class="ti-phase" id="phaseText">摸牌</div>
+        </div>
+        <div class="last-play" id="lastPlay"></div>
+      </div>
+    </div>
+
+    <div class="bottom-zone">
+      <div class="sel-text" id="selectionText">选择手牌后出牌。</div>
+      <div class="actions">
+        <button class="btn btn-pass" id="passBtn">不出</button>
+        <button class="btn btn-hint" id="hintBtn">提示</button>
+        <button class="btn btn-play" id="playBtn">出牌</button>
+        <div class="actions-divider"></div>
+        <button class="btn btn-skill" id="skillBtn">技能</button>
+        <button class="btn btn-sort" id="sortBtn">整理</button>
+      </div>
+      <div class="cards" id="hand"></div>
+    </div>
+
+    <div class="log-drawer" id="logDrawer">
+      <div class="log-head"><span>对局日志</span><button id="logCloseBtn">×</button></div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<!-- 视觉特效层（全屏覆盖） -->
+<div class="fx-layer" id="fxLayer"></div>
+
+<!-- 管理员密码验证弹窗 -->
+<div class="admin-pwd-mask" id="adminPwdMask">
+  <div class="admin-pwd-box">
+    <h3>🔒 管理员验证</h3>
+    <input type="password" id="adminPwdInput" placeholder="请输入管理员密码" autocomplete="off" />
+    <div class="admin-pwd-err" id="adminPwdErr"></div>
+    <div class="admin-pwd-actions">
+      <button class="btn btn-sort" id="adminPwdCancel">取消</button>
+      <button class="btn btn-play" id="adminPwdConfirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员调试面板 -->
+<div class="admin-panel" id="adminPanel">
+  <div class="admin-panel-header" id="adminPanelHeader">
+    <div>
+      <h2>⚙ 管理员调试台</h2>
+      <div class="admin-panel-sub">测试专用 · 所有修改仅对当前局生效</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <button class="admin-panel-close" id="adminPanelClose">×</button>
+      <div class="admin-panel-drag-hint"><span class="drag-icon">⠿</span>拖动</div>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">🔊 音效测试</div>
+    <div class="admin-btn-grid">
+      <button class="admin-test-btn" data-sfx="deal">发牌</button>
+      <button class="admin-test-btn" data-sfx="playSingle">单牌</button>
+      <button class="admin-test-btn" data-sfx="playPair">对子</button>
+      <button class="admin-test-btn" data-sfx="playTriple">三带一</button>
+      <button class="admin-test-btn" data-sfx="playStraight">顺子</button>
+      <button class="admin-test-btn" data-sfx="playFullHouse">葫芦</button>
+      <button class="admin-test-btn gold" data-sfx="playFour">💥 四条/炸弹</button>
+      <button class="admin-test-btn" data-sfx="playPairRun">连对</button>
+      <button class="admin-test-btn" data-sfx="multUp">倍数上升</button>
+      <button class="admin-test-btn" data-sfx="extraTurn">额外回合</button>
+      <button class="admin-test-btn" data-sfx="skill">技能触发</button>
+      <button class="admin-test-btn" data-sfx="fieldChange">场地变更</button>
+      <button class="admin-test-btn gold" data-sfx="win">🏆 获胜</button>
+      <button class="admin-test-btn danger" data-sfx="lose">失败</button>
+      <button class="admin-test-btn" data-sfx="coins">星石</button>
+      <button class="admin-test-btn" data-sfx="discard">弃牌</button>
+      <button class="admin-test-btn danger" data-sfx="pollution">污染</button>
+      <button class="admin-test-btn" data-sfx="barrier">结界</button>
+      <button class="admin-test-btn" data-sfx="yourTurn">回合提示</button>
+      <button class="admin-test-btn" data-sfx="click">按钮点击</button>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">✨ 视觉特效测试</div>
+    <div class="admin-btn-grid">
+      <button class="admin-test-btn" data-fx="ripple">出牌波纹</button>
+      <button class="admin-test-btn gold" data-fx="boom">💥 炸弹爆炸</button>
+      <button class="admin-test-btn" data-fx="multUp">倍数弹出</button>
+      <button class="admin-test-btn" data-fx="skill">技能光环</button>
+      <button class="admin-test-btn" data-fx="fieldChange">场地光扫</button>
+      <button class="admin-test-btn gold" data-fx="win">🏆 获胜庆祝</button>
+      <button class="admin-test-btn danger" data-fx="lose">失败灰幕</button>
+      <button class="admin-test-btn" data-fx="yourTurn">回合光圈</button>
+      <button class="admin-test-btn" data-fx="coins">星石弹出</button>
+      <button class="admin-test-btn" data-fx="extraTurn">额外回合</button>
+      <button class="admin-test-btn danger" data-fx="pollution">污染爆发</button>
+      <button class="admin-test-btn" data-fx="barrier">结界波纹</button>
+    </div>
+  </div>
+
+  <div class="admin-status" id="adminStatus">当前：未开始对局</div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">🎮 对局测试 <span class="admin-tag">仅对局中</span></div>
+    <div class="admin-btn-grid">
+      <button class="admin-test-btn gold" id="adminWin">🏆 直接获胜</button>
+      <button class="admin-test-btn danger" id="adminLose">立即失败</button>
+      <button class="admin-test-btn" id="adminAddBeans">+1000 星石</button>
+      <button class="admin-test-btn" id="adminMult2">倍数 ×2</button>
+      <button class="admin-test-btn" id="adminExtraTurn">+1 额外回合</button>
+      <button class="admin-test-btn" id="adminClearHand">清空手牌</button>
+      <button class="admin-test-btn" id="adminDraw1">摸1张牌</button>
+      <button class="admin-test-btn" id="adminDraw5">摸5张牌</button>
+      <button class="admin-test-btn" id="adminEnergyMax">充能设为8</button>
+      <button class="admin-test-btn danger" id="adminForceField">刷新场地</button>
+      <button class="admin-test-btn" id="adminClearField">清除场地</button>
+      <button class="admin-test-btn" id="adminRunAI">▶ 立即执行AI</button>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">🧪 测试快照</div>
+    <div class="admin-btn-grid">
+      <button class="admin-test-btn" id="adminSaveSnapshot">保存当前状态</button>
+      <button class="admin-test-btn" id="adminRestoreSnapshot">恢复测试状态</button>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-title">⚡ 快捷工具</div>
+    <div class="admin-btn-grid">
+      <button class="admin-test-btn" id="adminDumpState">📋 打印游戏状态</button>
+      <button class="admin-test-btn danger" id="adminResetBeans">重置星石</button>
+    </div>
+  </div>
+</div>
+
+<div class="event-overlay" id="eventOverlay">
+  <div class="event-card">
+    <div class="event-kicker" id="eventKicker">事件</div>
+    <div class="event-title" id="eventTitle">提示</div>
+    <div class="event-desc" id="eventDesc"></div>
+    <div class="event-countdown">稍后自动继续</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="save-code-mask" id="saveCodeMask"><div class="save-code-panel"><div class="save-code-head"><div><b id="saveCodeTitle">存档码</b><span id="saveCodeHint">复制后可在其他设备恢复</span></div><button type="button" id="saveCodeClose">×</button></div><textarea id="saveCodeText" spellcheck="false" placeholder="在这里粘贴存档码"></textarea><div class="save-code-actions"><button class="btn btn-sort" id="saveCodeCopy">复制存档码</button><button class="btn btn-play" id="saveCodeApply">导入此存档码</button></div></div></div>
+<script src="assets/js/game.js" defer></script>
+</body>
+</html>
+
