@@ -61,11 +61,31 @@ const FIELDS = [
 let G = null;
 let selected = new Set();
 let aiTimer = null;
-const AVATARS=["./assets/avatars/avatar-1-02b1108d.png", "./assets/avatars/avatar-2-a2603c90.png", "./assets/avatars/avatar-3-8c5b7881.png", "./assets/avatars/avatar-4-3cade4dc.png"];
+const PLAYER_AVATAR="./assets/avatars/avatar-1-02b1108d.png";
+const OPPONENTS=[
+  {name:"福掌柜",avatar:"./assets/avatars/avatar-2-a2603c90.png"},
+  {name:"阿岚",avatar:"./assets/avatars/avatar-3-8c5b7881.png"},
+  {name:"顾老",avatar:"./assets/avatars/avatar-4-3cade4dc.png"},
+  {name:"公子",avatar:"./assets/avatars/opponent-gongzi-transparent.png"},
+  {name:"术士",avatar:"./assets/avatars/opponent-shushi-transparent.png"},
+  {name:"影剑",avatar:"./assets/avatars/opponent-yingjian.webp"},
+  {name:"青策",avatar:"./assets/avatars/opponent-qingce.webp"},
+  {name:"赤焰",avatar:"./assets/avatars/opponent-chiyan.webp"},
+  {name:"紫弦",avatar:"./assets/avatars/opponent-zixian.webp"}
+];
+// 兼容旧存档：没有 player.avatar 时仍按座位使用原始头像。
+const AVATARS=[PLAYER_AVATAR,"./assets/avatars/avatar-2-a2603c90.png","./assets/avatars/avatar-3-8c5b7881.png","./assets/avatars/avatar-4-3cade4dc.png"];
 const expIntel=new Set();
 let _modalIsChoice=false;
 
 const $ = id => document.getElementById(id);
+function setLobbyMode(isLobby){
+  document.documentElement.classList.toggle("lobby-mode",!!isLobby);
+  if(document.body) document.body.classList.toggle("lobby-mode",!!isLobby);
+}
+function syncLobbyMode(){
+  setLobbyMode(!$("startPanel")?.classList.contains("hidden"));
+}
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const rand = n => Math.floor(Math.random()*n);
 const rollD6 = () => 1+rand(6);
@@ -253,10 +273,17 @@ function applyPortableSave(data){
   if(typeof AudioSys!=="undefined"){AudioSys.loadPrefs();AudioSys.applyPrefsUI();}
   if(G){$("startPanel").classList.add("hidden");$("game").classList.remove("hidden");updateTrapArming();render();if(currentPlayer()?.isAI&&G.phase==="play")scheduleAI();}
   else{$("game").classList.add("hidden");$("startPanel").classList.remove("hidden");updateLobbyRooms();}
+  syncLobbyMode();
 }
 function openSaveCode(mode="export"){
   const mask=$("saveCodeMask"), text=$("saveCodeText"), title=$("saveCodeTitle"), hint=$("saveCodeHint"), copy=$("saveCodeCopy"), apply=$("saveCodeApply"); if(!mask)return;
-  const exporting=mode==="export"; title.textContent=exporting?"导出存档码":"导入存档码"; hint.textContent=exporting?"复制并妥善保存，之后可恢复当前进度":"粘贴完整存档码后点击导入";
+  // 存档导入/导出只允许在大厅使用，避免对局中的异步结算状态被截断或覆盖。
+  if($("startPanel")?.classList.contains("hidden")){
+    toast("存档导入/导出仅可在大厅使用。");
+    return;
+  }
+  const exporting=mode==="export";
+  title.textContent=exporting?"导出存档码":"导入存档码"; hint.textContent=exporting?"复制并妥善保存，之后可恢复当前进度":"粘贴完整存档码后点击导入";
   text.value=exporting?createSaveCode():""; text.readOnly=exporting; copy.style.display=exporting?"":"none"; apply.style.display=exporting?"none":""; mask.classList.add("show"); setTimeout(()=>{text.focus();if(exporting)text.select();},30);
 }
 function closeSaveCode(){ $("saveCodeMask")?.classList.remove("show"); }
@@ -269,8 +296,8 @@ function importSaveCodeFromUI(){
   catch(err){console.error("导入存档码失败",err);alert(`导入失败：${err.message||"存档码无效"}`);}
 }
 function initSaveTransferUI(){
-  ["saveExportBtn","saveExportTopBtn"].forEach(id=>$(id)?.addEventListener("click",()=>openSaveCode("export")));
-  ["saveImportBtn","saveImportTopBtn"].forEach(id=>$(id)?.addEventListener("click",()=>openSaveCode("import")));
+  $("saveExportBtn")?.addEventListener("click",()=>openSaveCode("export"));
+  $("saveImportBtn")?.addEventListener("click",()=>openSaveCode("import"));
   $("saveCodeClose")?.addEventListener("click",closeSaveCode); $("saveCodeCopy")?.addEventListener("click",copyCurrentSaveCode); $("saveCodeApply")?.addEventListener("click",importSaveCodeFromUI);
   $("saveCodeMask")?.addEventListener("click",e=>{if(e.target===$("saveCodeMask"))closeSaveCode();});
 }
@@ -314,10 +341,12 @@ function newGame(roomId=selectedRoomId){
   else humanSkill=SKILLS.find(x=>x.id===selectedSkillId) || SKILLS[0];
   const aiPool=shuffle(SKILLS.filter(x=>x.id!==humanSkill.id));
   const skills=[humanSkill,...aiPool.slice(0,3)];
-  const names=["你","AI·甲","AI·乙","AI·丙"];
+  // 每局从扩展对手池随机抽取3名，人物与头像一一绑定且不重复。
+  const opponents=shuffle(OPPONENTS.map(x=>({...x}))).slice(0,3);
+  const names=["你",...opponents.map(x=>x.name)];
   G={
     deck, players:names.map((name,i)=>({
-      name,isAI:i!==0,hand:[],skill:skills[i],energy:0,diceValue:null,ownNormalTurns:0,
+      name,avatar:i===0?PLAYER_AVATAR:opponents[i-1].avatar,isAI:i!==0,hand:[],skill:skills[i],energy:0,diceValue:null,ownNormalTurns:0,
       extraTurns:0,skipPlay:false,revealUsed:false,chargeBurstQueued:false,chargeBurstExtraPending:0,
       diceExtraPending:false,fieldExtraPending:false,knownInfo:{},discards:[],beans:beanBalances[i],
       barrierType:null,barrierRemaining:0,barrierCooldown:0,barrierCanCast:false,barrierTarget:null,barrierSiftPending:false,barrierDrawBonus:0
@@ -336,6 +365,7 @@ function newGame(roomId=selectedRoomId){
   renderStoredBalance();
   $("startPanel").classList.add("hidden");
   $("game").classList.remove("hidden");
+  syncLobbyMode();
   logClear();
   log(`进入【${room.name}】。底注 ${room.baseBet} 星石。`, "system");
   log("游戏开始。每人起手2张。", "system");
@@ -955,7 +985,11 @@ function aiArtisanReplace(p,card){
 async function aiDivinationDraw(p){
   // 占卜只替代“正常摸牌阶段的第一张”；额外回合/效果摸牌绝不触发。
   if(G.extraMode)return;
-  if(G.deck.length<4)return;
+  if(G.deck.length<4){
+    drawTo(p,1,"normal");
+    log(`${p.name} 的【占卜4】因牌堆不足4张，改为正常摸1张。`);
+    return;
+  }
   await aiThink();
   const top=G.deck.splice(0,4);
   let best=0,bestScore=-1e9;
@@ -991,7 +1025,11 @@ async function aiDivinationDraw(p){
 async function humanDivinationDraw(p){
   // 占卜只替代“正常摸牌阶段的第一张”；额外回合/效果摸牌绝不触发。
   if(G.extraMode)return;
-  if(G.deck.length<4)return;
+  if(G.deck.length<4){
+    drawTo(p,1,"normal");
+    log(`你的【占卜4】因牌堆不足4张，改为正常摸1张。`);
+    return;
+  }
   const top=G.deck.splice(0,4);
 
   const chosenId=await chooseCardFromList("占卜4 · 选择1张加入手牌",top);
@@ -1888,21 +1926,28 @@ function win(p){
   const losers=G.players.filter(x=>x!==p);
   const unit=G.baseBet*G.multiplier;
   const houseFee=Math.round(unit*0.1);
-  const totalGain=unit*losers.length;
-  // 结算
+  const settlements=new Map();
+  let winnerGain=0;
+  let totalFeeCollected=0;
+  // 结算：赢家只获得对手实际支付的底注；手续费单独回收，避免旧逻辑额外再从赢家收益里扣一次手续费。
   for(const x of losers){
     const xi=G.players.indexOf(x);
-    const pay=unit+houseFee;
-    beanBalances[xi]=Math.max(0,beanBalances[xi]-pay);
+    const available=Math.max(0,beanBalances[xi]);
+    const basePaid=Math.min(unit,available);
+    const feePaid=Math.min(houseFee,Math.max(0,available-basePaid));
+    const paid=basePaid+feePaid;
+    beanBalances[xi]=available-paid;
     x.beans=beanBalances[xi];
+    winnerGain+=basePaid;
+    totalFeeCollected+=feePaid;
+    settlements.set(x,{paid,basePaid,feePaid});
   }
-  const winnerGain=totalGain-houseFee;
   beanBalances[winIdx]+=winnerGain;
   p.beans=beanBalances[winIdx];
   const balanceSaved=saveBeanBalances();
   renderStoredBalance();
   log(`🏆 ${p.name} 清空手牌，获胜！底注 ${G.baseBet} × 倍数 ${G.multiplier}× = ${unit} 星石/人`, p.isAI ? "lose" : "win");
-  log(`💰 ${p.name} 获得 ${winnerGain} 星石（${losers.length}人各付 ${unit}，系统回收 ${houseFee}×${losers.length}）`, p.isAI ? "lose" : "win");
+  log(`💰 ${p.name} 获得 ${winnerGain} 星石；系统实际回收手续费 ${totalFeeCollected} 星石。`, p.isAI ? "lose" : "win");
   // 结算音效 + 视觉
   if(typeof AudioSys!=="undefined"){
     if(p.isAI){
@@ -1922,7 +1967,8 @@ function win(p){
   // 结算面板
   let rows=G.players.map((x,i)=>{
     const isWin=x===p;
-    const delta=isWin?`+${winnerGain}`:`-${unit+houseFee}`;
+    const paid=settlements.get(x)?.paid||0;
+    const delta=isWin?`+${winnerGain}`:`-${paid}`;
     const cls=isWin?"win":"lose";
     return `<div class="settle-row ${cls}"><span class="name">${isWin?"🏆 ":""}${x.name}</span><span style="color:#aaa;font-size:12px">${beanBalances[i]} 🔮</span><span class="delta">${delta} 🔮</span></div>`;
   }).join("");
@@ -1934,7 +1980,7 @@ function win(p){
     </div>
     <div class="center" style="margin:6px 0 2px;color:#e9c9a0;font-size:13px">${G.room?.name||"牌局"} · 底注 ${G.baseBet} × 倍数 ${G.multiplier}× = ${unit} 星石/人</div>
     <div style="margin:8px 0">${rows}</div>
-    <div class="small center" style="color:${balanceSaved?"#9fbfaa":"#ffb0b0"}">${balanceSaved?"余额已自动保存，重新打开游戏仍会延续":"当前环境无法保存余额，请保持页面开启"} · 系统回收 ${houseFee} 星石/人</div>
+    <div class="small center" style="color:${balanceSaved?"#9fbfaa":"#ffb0b0"}">${balanceSaved?"余额已自动保存，重新打开游戏仍会延续":"当前环境无法保存余额，请保持页面开启"} · 系统本局实际回收 ${totalFeeCollected} 星石手续费</div>
     <div class="settle-actions">
       <button class="btn btn-play" onclick="replayGame()">再来一局</button>
       <button class="btn btn-sort" onclick="returnToStart()">返回首页</button>
@@ -2031,7 +2077,8 @@ function render(){
         <div class="intel-legend"><span class="intel-public">金色</span> = 已公开 / 明牌；普通颜色 = 仅你占卜得知</div>
       </div>`;
     }
-    d.innerHTML=`<div class="avatar"><div class="face" style="background-image:url('${AVATARS[i]}')"></div><div class="meta"><div class="name">${x.name}</div><div class="count">${x.hand.length}<span class="small">张</span></div><div class="skill-row"><span class="sk-chip">${x.skill.name}</span></div></div></div>
+    const avatar=x.avatar||AVATARS[i]||PLAYER_AVATAR;
+    d.innerHTML=`<div class="avatar"><div class="face" style="background-image:url('${avatar}')"></div><div class="meta"><div class="name">${x.name}</div><div class="count">${x.hand.length}<span class="small">张</span></div><div class="skill-row"><span class="sk-chip">${x.skill.name}</span></div></div></div>
       ${extra}
       ${rev.length?`<div class="revealed">明牌：${rev.slice(-5).map(c=>c.rank+c.suit).join(" ")}${rev.length>5?` · +${rev.length-5}`:""}</div>`:""}
       ${privateIntel}
@@ -2226,6 +2273,7 @@ function returnToStart(){
   closeModal();
   $("game").classList.add("hidden");
   $("startPanel").classList.remove("hidden");
+  syncLobbyMode();
   renderStoredBalance();
 }
 
@@ -4254,6 +4302,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // Initial render only
 renderStoredBalance();
 updateLobbyRooms();
+syncLobbyMode();
 
 
 // v4.7 compact menu auto-close

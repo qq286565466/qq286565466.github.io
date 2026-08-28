@@ -1987,7 +1987,7 @@ button:disabled{opacity:.42}
 /* shared overlays: avoid viewport overflow */
 .topbar-more-menu,.lobby-more-menu{max-height:min(70vh,420px);overflow:auto;overscroll-behavior:contain}
 .sheet{max-height:min(86dvh,760px)}
-.save-code-panel{max-height:min(88dvh,760px)}
+.save-code-panel{max-height:min(88dvh,760px);overflow:auto;overscroll-behavior:contain}
 
 /* desktop/tablet: slightly cleaner spacing and more stable widths */
 @media(min-width:621px){
@@ -2014,11 +2014,15 @@ button:disabled{opacity:.42}
   #hand .card.selected{transform:translateY(-7px)!important;box-shadow:0 7px 14px rgba(0,0,0,.42)!important;z-index:12}
   #hand .card{transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
 
-  /* stable five-button hierarchy without label spill */
+  /* stable five-button hierarchy without label spill + usable touch targets */
   .actions{align-items:stretch!important}
-  .actions .btn{min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .actions .btn{min-width:0!important;height:40px!important;min-height:40px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   #passBtn,#hintBtn,#playBtn{grid-column:span 2!important}
-  #skillBtn,#sortBtn{grid-column:span 3!important}
+  #skillBtn,#sortBtn{grid-column:span 3!important;height:34px!important;min-height:34px!important}
+  .compact-actions>.icon-btn,.topbar-more>summary{width:32px!important;min-width:32px!important;height:32px!important;min-height:32px!important}
+  .skill-picker-trigger{min-height:44px!important}
+  .lobby-more>summary{height:42px!important;min-height:42px!important}
+  .room-enter{width:52px!important;min-height:34px!important;font-size:8px!important}
 
   /* keep player labels/cards inside the arena */
   .players{overflow:hidden}
@@ -2050,4 +2054,60 @@ button:disabled{opacity:.42}
   .topbar-more-menu{top:calc(32px + env(safe-area-inset-top))!important}
   #hand .card.selected{transform:translateY(-4px)!important}
   .sheet{max-height:calc(100dvh - env(safe-area-inset-top))}
+}
+
+/* ---------- v4.10 lobby repair ---------- */
+/* The game table intentionally locks gestures, but the lobby itself must remain vertically scrollable on touch devices. */
+html.lobby-mode,body.lobby-mode{touch-action:pan-y}
+body.lobby-mode .start-panel{
+  overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;touch-action:pan-y;
+}
+.lobby,.lobby>*{min-width:0}
+.lobby-top,.room-stage,.room-list,.lobby-bottom,.lobby-skill,.lobby-more{min-width:0}
+.wallet-copy{min-width:0}
+.lobby-wallet{max-width:min(46vw,240px)}
+.lobby-wallet b{display:block;max-width:18ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.save-code-mask{z-index:1600}
+
+@media(min-width:621px){
+  .lobby{min-height:100%}
+  .room-card{contain:none}
+  .lobby-bottom{align-items:stretch!important}
+  .lobby-skill,.lobby-more{align-self:stretch}
+  .skill-picker-trigger,.lobby-more>summary{height:100%}
+}
+
+@media(max-width:620px){
+  body.lobby-mode .start-panel{padding:0}
+  body.lobby-mode .lobby{
+    width:100%;height:auto;min-height:100%;
+    padding:calc(6px + env(safe-area-inset-top)) calc(6px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left))!important;
+    overflow:visible;
+  }
+  .lobby-top{left:0;right:0;max-width:100%}
+  .lobby-brand{min-width:0;flex:1 1 auto}
+  .lobby-brand .title{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lobby-wallet{min-width:0!important;max-width:44vw;flex:0 1 auto}
+  .wallet-copy{max-width:100%}
+  .lobby-wallet b{max-width:12ch}
+  .room-stage{width:100%;overflow:visible}
+  .room-list,.room-card,.room-content{min-width:0;width:100%}
+  .room-card{touch-action:manipulation}
+  .room-content{overflow:hidden}
+  .room-name,.room-entry{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lobby-bottom{width:100%;align-items:stretch!important;overflow:visible}
+  .lobby-skill,.lobby-more{width:100%;min-width:0}
+  .skill-picker-trigger,.lobby-more>summary{width:100%;max-width:100%}
+  .lobby-more-menu{
+    box-sizing:border-box;max-width:none!important;
+    overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;
+  }
+  .lobby-more-menu .btn{min-width:0;min-height:44px}
+}
+
+@media(max-width:370px){
+  .lobby-top{gap:5px!important}
+  .lobby-wallet{max-width:42vw}
+  .lobby-wallet b{max-width:9ch}
 }
