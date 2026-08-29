@@ -1,5 +1,12 @@
 ﻿"use strict";
 
+const GAME_VERSION=window.GAME_META?.version;
+if(!GAME_VERSION)throw new Error("缺少 assets/js/version.js，无法确定游戏版本");
+
+const GAME_CONFIG=window.GAME_CONFIG;
+if(!GAME_CONFIG)throw new Error("缺少 assets/js/config.js，无法读取基础对局配置");
+const MATCH_RULES=GAME_CONFIG.match;
+
 const SUITS = ["♠","♥","♣","♦"];
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const RANK_VALUE = Object.fromEntries(RANKS.map((r,i)=>[r,i+1]));
@@ -62,16 +69,17 @@ let G = null;
 let selected = new Set();
 let aiTimer = null;
 const PLAYER_AVATAR="./assets/avatars/avatar-player-modern.webp";
+const AI_FALLBACK_PROFILE=Object.freeze({style:"均衡应战",desc:"在资源、组合与压制之间保持平衡。",aggression:0.75,combo:1,finish:1,control:1,resource:1,skill:1,variance:1,humanFocus:0});
 const OPPONENTS=[
-  {name:"福掌柜",avatar:"./assets/avatars/opponent-fuzhanggui-modern.webp"},
-  {name:"阿岚",avatar:"./assets/avatars/opponent-alan-modern.webp"},
-  {name:"顾老",avatar:"./assets/avatars/opponent-gulao-modern.webp"},
-  {name:"公子",avatar:"./assets/avatars/opponent-gongzi-transparent.png"},
-  {name:"术士",avatar:"./assets/avatars/opponent-shushi-transparent.png"},
-  {name:"影剑",avatar:"./assets/avatars/opponent-yingjian.webp"},
-  {name:"青策",avatar:"./assets/avatars/opponent-qingce.webp"},
-  {name:"赤焰",avatar:"./assets/avatars/opponent-chiyan.webp"},
-  {name:"紫弦",avatar:"./assets/avatars/opponent-zixian.webp"}
+  {name:"福掌柜",avatar:"./assets/avatars/opponent-fuzhanggui-modern.webp",ai:{style:"稳健经营",desc:"优先保留成组资源，少做高波动冒险。",aggression:0.48,combo:1.12,finish:1.08,control:0.82,resource:1.30,skill:0.92,variance:0.55,humanFocus:0.00}},
+  {name:"阿岚",avatar:"./assets/avatars/opponent-alan-modern.webp",ai:{style:"疾风快攻",desc:"更愿意主动出牌和追击短手玩家。",aggression:1.15,combo:0.94,finish:1.24,control:0.82,resource:0.78,skill:0.98,variance:0.95,humanFocus:0.08}},
+  {name:"顾老",avatar:"./assets/avatars/opponent-gulao-modern.webp",ai:{style:"守势控场",desc:"强调目标威胁判断和持续干扰。",aggression:0.58,combo:1.00,finish:1.02,control:1.38,resource:1.05,skill:1.18,variance:0.48,humanFocus:0.00}},
+  {name:"公子",avatar:"./assets/avatars/opponent-gongzi-transparent.png",ai:{style:"冒险豪赌",desc:"偏爱高收益路线，也更容易出现大胆选择。",aggression:1.12,combo:1.18,finish:0.94,control:0.78,resource:0.88,skill:1.08,variance:1.60,humanFocus:0.05}},
+  {name:"术士",avatar:"./assets/avatars/opponent-shushi-transparent.png",ai:{style:"技能经营",desc:"更积极寻找技能收益和资源转换机会。",aggression:0.66,combo:0.90,finish:0.98,control:1.18,resource:1.14,skill:1.48,variance:0.68,humanFocus:0.00}},
+  {name:"影剑",avatar:"./assets/avatars/opponent-yingjian.webp",ai:{style:"终结猎手",desc:"对接近清手的目标更敏感，自己临门时更果断。",aggression:0.96,combo:1.02,finish:1.58,control:1.18,resource:0.76,skill:1.02,variance:0.52,humanFocus:0.14}},
+  {name:"青策",avatar:"./assets/avatars/opponent-qingce.webp",ai:{style:"精算布局",desc:"更重视大牌组合和稳定的高分路线。",aggression:0.70,combo:1.42,finish:1.30,control:1.18,resource:1.02,skill:1.18,variance:0.34,humanFocus:0.00}},
+  {name:"赤焰",avatar:"./assets/avatars/opponent-chiyan.webp",ai:{style:"爆发猛攻",desc:"强烈偏好大牌与额外回合，资源保守度最低。",aggression:1.36,combo:1.50,finish:1.20,control:0.72,resource:0.62,skill:1.04,variance:0.88,humanFocus:0.12}},
+  {name:"紫弦",avatar:"./assets/avatars/opponent-zixian.webp",ai:{style:"诡谋牵制",desc:"偏爱技能、污染与控制，偶尔会特别关注真人玩家。",aggression:0.74,combo:0.96,finish:1.04,control:1.58,resource:0.92,skill:1.38,variance:0.78,humanFocus:0.28}}
 ];
 // 兼容旧存档：没有 player.avatar 时仍按座位使用原始头像。
 const AVATARS=[PLAYER_AVATAR,"./assets/avatars/opponent-fuzhanggui-modern.webp","./assets/avatars/opponent-alan-modern.webp","./assets/avatars/opponent-gulao-modern.webp"];
@@ -90,8 +98,15 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const rand = n => Math.floor(Math.random()*n);
 const rollD6 = () => 1+rand(6);
 
-const AI_THINK_MS = 2000;
+const AI_THINK_MS = MATCH_RULES.aiThinkMs;
 const aiThink = () => sleep(AI_THINK_MS);
+const clamp01=v=>Math.max(0,Math.min(1,v));
+function aiProfile(p){ return p?.aiProfile||AI_FALLBACK_PROFILE; }
+function aiDifficulty(p){ return p?.aiDifficulty||G?.room?.ai||{label:"标准",mistakeRate:0.12,scoreNoise:7,topChoices:2,awareness:0.82,skillFactor:1}; }
+function aiScoredChoice(p,items,scoreFn){ if(!items?.length)return null; const diff=aiDifficulty(p), profile=aiProfile(p); const noise=Math.max(0,diff.scoreNoise||0)*Math.max(0.25,profile.variance||1); const ranked=items.map(item=>({item,score:scoreFn(item)+(Math.random()*2-1)*noise})).sort((a,b)=>b.score-a.score); const window=Math.max(1,Math.min(ranked.length,diff.topChoices||1)); if(window>1&&Math.random()<clamp01(diff.mistakeRate||0))return ranked[rand(window)].item; return ranked[0].item; }
+function aiTargetScore(p,target,purpose="pressure"){ const profile=aiProfile(p), diff=aiDifficulty(p); if(target===p){ if(purpose!=="draw")return -9999; const need=p.hand.length<=2?58:p.hand.length<=4?28:p.hand.length<=6?4:-55; return need*profile.resource+(profile.aggression<0.7?8:0); } let score=(10-target.hand.length)*12*profile.control; if(target.hand.length<=3)score+=(4-target.hand.length)*24*profile.finish; if(target===G.players[0])score+=(profile.humanFocus||0)*28; if((diff.awareness||0)>0.65){ if(target.extraTurns>0)score+=10*(diff.awareness||1); if(["overload","charge","artisan"].includes(target.skill?.id))score+=5*(diff.awareness||1); } if(purpose==="pressure")score+=10*profile.aggression; if(purpose==="control")score+=12*profile.control; return score; }
+function aiChooseTargets(p,count,{allowSelf=false,purpose="pressure"}={}){ const pool=G.players.map((x,i)=>({x,i})).filter(o=>allowSelf||o.x!==p), picks=[]; while(picks.length<count&&pool.length){ const chosen=aiScoredChoice(p,pool,o=>aiTargetScore(p,o.x,purpose)); if(!chosen)break; picks.push(chosen.i); pool.splice(pool.indexOf(chosen),1); } return picks; }
+function aiMovePersonalityBias(p,move){ const profile=aiProfile(p); const n=move.cards.length, remain=p.hand.length-n; let score=0; if(n>=4)score+=(profile.combo-1)*30+(profile.aggression-0.75)*10; if(move.type==="single")score+=(profile.aggression-0.75)*8-(profile.combo-1)*7; if(remain<=2)score+=(3-remain)*18*(profile.finish-0.75); if(p.skill.id==="pollution"&&move.type==="single")score+=(profile.control-1)*16+(profile.skill-1)*10; if(p.skill.id==="artisan"&&n>=4)score+=(profile.skill-1)*10; if(move.cards.some(c=>c.polluted))score+=8*profile.control; return score; }
 
 function makeDeck(){
   const d=[]; let uid=0;
@@ -199,7 +214,7 @@ function checkChargeBurst(p){
 }
 
 const BALANCE_STORAGE_KEY="happy-card-game.bean-balances.v1";
-const DEFAULT_BEAN_BALANCES=[2000,2000,2000,2000];
+const DEFAULT_BEAN_BALANCES=Array(4).fill(MATCH_RULES.startingBalance);
 
 function loadBeanBalances(){
   try{
@@ -230,7 +245,7 @@ function renderStoredBalance(){
 }
 const SAVE_FILE_MAGIC="happy-card-game-save";
 const SAVE_FILE_VERSION=1;
-const SAVE_BUILD="v4.10";
+const SAVE_BUILD=GAME_VERSION;
 const SAVE_CODE_PREFIX="HCG1-";
 
 function buildPortableSave(){
@@ -264,11 +279,12 @@ function validatePortableSave(data){
   if(!Array.isArray(data.balances)||data.balances.length!==4||!data.balances.every(v=>Number.isFinite(v)&&v>=0))throw new Error("存档余额数据无效");
   if(data.game && (!Array.isArray(data.game.players)||data.game.players.length!==4))throw new Error("对局数据不完整");
 }
+function normalizeImportedAIState(){ if(!G?.players)return; const roomDef=ROOMS[G.room?.id]||ROOMS[selectedRoomId]||ROOMS.normal; G.room={...roomDef,...(G.room||{}),ai:{...roomDef.ai,...(G.room?.ai||{})}}; for(const p of G.players){ if(!p.isAI)continue; const def=OPPONENTS.find(o=>o.name===p.name); p.aiProfile={...(def?.ai||AI_FALLBACK_PROFILE)}; p.aiDifficulty={...G.room.ai}; } }
 function applyPortableSave(data){
   clearTimeout(aiTimer); aiTimer=null;
   beanBalances.splice(0,beanBalances.length,...data.balances.map(v=>Math.floor(v)));
   if(ROOMS[data.selectedRoomId])selectedRoomId=data.selectedRoomId;
-  G=data.game?JSON.parse(JSON.stringify(data.game)):null; selected.clear(); expIntel.clear(); saveBeanBalances(); renderStoredBalance();
+  G=data.game?JSON.parse(JSON.stringify(data.game)):null; normalizeImportedAIState(); selected.clear(); expIntel.clear(); saveBeanBalances(); renderStoredBalance();
   try{localStorage.setItem("happy-card-game.sfxMuted",data.preferences?.sfxMuted?"1":"0");localStorage.setItem("happy-card-game.musicMuted",data.preferences?.musicMuted?"1":"0");}catch(e){}
   if(typeof AudioSys!=="undefined"){AudioSys.loadPrefs();AudioSys.applyPrefsUI();}
   if(G){$("startPanel").classList.add("hidden");$("game").classList.remove("hidden");updateTrapArming();render();if(currentPlayer()?.isAI&&G.phase==="play")scheduleAI();}
@@ -302,26 +318,48 @@ function initSaveTransferUI(){
   $("saveCodeMask")?.addEventListener("click",e=>{if(e.target===$("saveCodeMask"))closeSaveCode();});
 }
 const beanBalances=loadBeanBalances();
-const ROOMS={
-  beginner:{id:"beginner",name:"新手场",baseBet:20,minBalance:0},
-  normal:{id:"normal",name:"普通场",baseBet:100,minBalance:500},
-  advanced:{id:"advanced",name:"高级场",baseBet:500,minBalance:2000}
-};
+const ROOMS=GAME_CONFIG.rooms;
 let selectedRoomId="normal";
 
 function currentRoom(){ return ROOMS[selectedRoomId] || ROOMS.normal; }
+
+// 根据配置生成“第5、10、15…”这类提示，避免 UI 写死轮次。
+function fieldScheduleText(){
+  const every=Math.max(1,Number(MATCH_RULES.fieldEveryRounds)||1);
+  return `第${[every,every*2,every*3].join("、")}…轮结束时抽取新场地`;
+}
+
+// 规则页中的房间数字同样由配置生成。
+function roomRulesText(){
+  const rooms=Object.values(ROOMS);
+  return `大厅分为【${rooms.map(r=>r.name).join(" / ")}】：底注分别为${rooms.map(r=>r.baseBet).join(" / ")}星石；入场门槛分别为${rooms.map(r=>r.minBalance).join(" / ")}星石。场次只改变星石风险和 AI 难度，不改变卡牌规则。`;
+}
 
 function updateLobbyRooms(){
   const balance=beanBalances[0] ?? 0;
   document.querySelectorAll(".room-card[data-room]").forEach(card=>{
     const room=ROOMS[card.dataset.room];
     if(!room)return;
+
+    // 房间显示数字从 config.js 同步，避免“逻辑已改、界面没改”。
+    const nameEl=card.querySelector(".room-name");
+    const stakeEl=card.querySelector(".room-stake b");
+    const entryEl=card.querySelector(".room-entry");
+    if(nameEl)nameEl.textContent=room.name;
+    if(stakeEl)stakeEl.textContent=room.baseBet.toLocaleString("zh-CN");
+    if(entryEl)entryEl.textContent=room.minBalance>0
+      ? `${room.minBalance.toLocaleString("zh-CN")} 星石以上可入场`
+      : "不限星石 · 适合熟悉玩法";
+
     const locked=balance<room.minBalance;
     card.classList.toggle("locked",locked);
     card.setAttribute("aria-disabled",locked?"true":"false");
     const enter=card.querySelector(".room-enter");
     if(enter)enter.textContent=locked?`还差 ${(room.minBalance-balance).toLocaleString("zh-CN")} 🔮`:"进入牌桌";
   });
+
+  const fieldDesc=$("fieldDesc");
+  if(fieldDesc&&!G)fieldDesc.textContent=fieldScheduleText();
 }
 
 function newGame(roomId=selectedRoomId){
@@ -347,6 +385,7 @@ function newGame(roomId=selectedRoomId){
   G={
     deck, players:names.map((name,i)=>({
       name,avatar:i===0?PLAYER_AVATAR:opponents[i-1].avatar,isAI:i!==0,hand:[],skill:skills[i],energy:0,diceValue:null,ownNormalTurns:0,
+      aiProfile:i===0?null:{...opponents[i-1].ai},aiDifficulty:i===0?null:{...room.ai},
       extraTurns:0,skipPlay:false,revealUsed:false,chargeBurstQueued:false,chargeBurstExtraPending:0,
       diceExtraPending:false,fieldExtraPending:false,knownInfo:{},discards:[],beans:beanBalances[i],
       barrierType:null,barrierRemaining:0,barrierCooldown:0,barrierCanCast:false,barrierTarget:null,barrierSiftPending:false,barrierDrawBonus:0
@@ -355,7 +394,7 @@ function newGame(roomId=selectedRoomId){
     gameOver:false, trapStates:{}, turnSerial:0, extraMode:false, fieldHistory:[],lastPlay:null,
     room:{...room}, baseBet:room.baseBet, multiplier:1
   };
-  for(const p of G.players) drawTo(p,2,"setup");
+  for(const p of G.players) drawTo(p,MATCH_RULES.startingHandSize,"setup");
   for(const p of G.players){
     if(p.skill.id==="trap"){
       G.trapStates[p.name]={armed:false,cooldown:0,everActivated:false};
@@ -367,8 +406,9 @@ function newGame(roomId=selectedRoomId){
   $("game").classList.remove("hidden");
   syncLobbyMode();
   logClear();
-  log(`进入【${room.name}】。底注 ${room.baseBet} 星石。`, "system");
-  log("游戏开始。每人起手2张。", "system");
+  log(`进入【${room.name}】。底注 ${room.baseBet} 星石 · AI难度：${room.ai.label}。`, "system");
+  log(`本局对手：${G.players.filter(p=>p.isAI).map(p=>`${p.name}（${aiProfile(p).style}）`).join("、")}。`, "system");
+  log(`游戏开始。每人起手${MATCH_RULES.startingHandSize}张。`, "system");
   log(`本局随机先手：${G.players[G.current].name}。`, "system");
   updateTrapArming();
   render();
@@ -505,22 +545,7 @@ async function humanActivateBarrier(p){
   return activateBarrier(p,type,target);
 }
 
-function aiBarrierChoice(p){
-  const me=G.players.indexOf(p);
-  const opp=G.players.map((x,i)=>({x,i}))
-    .filter(o=>o.i!==me)
-    .sort((a,b)=>a.x.hand.length-b.x.hand.length);
-  const threat=opp[0];
-
-  if(threat && threat.x.hand.length<=3) return {type:"pressure",target:threat.i};
-
-  const candidates=enumerateCandidates(p);
-  const hasBig=candidates.some(c=>c.cards.length>=4);
-  if(p.hand.length>=5 && !hasBig) return {type:"sift",target:null};
-  if(p.hand.length<=4) return {type:"draw",target:null};
-  if(threat && Math.random()<0.45) return {type:"pressure",target:threat.i};
-  return {type:Math.random()<0.55?"sift":"draw",target:null};
-}
+function aiBarrierChoice(p){ const profile=aiProfile(p), diff=aiDifficulty(p); const threatIndex=aiChooseTargets(p,1,{purpose:"control"})[0]; const threat=threatIndex===undefined?null:G.players[threatIndex]; const candidates=enumerateCandidates(p); const hasBig=candidates.some(c=>c.cards.length>=4); const options=[{type:"draw",target:null,score:(p.hand.length<=4?38:10)*profile.resource},{type:"sift",target:null,score:(p.hand.length>=5&&!hasBig?42:14)*profile.combo},{type:"pressure",target:threatIndex,score:threat?aiTargetScore(p,threat,"control")*0.45*profile.skill:-999}].filter(o=>o.type!=="pressure"||o.target!==undefined); const picked=aiScoredChoice(p,options,o=>o.score*(diff.skillFactor||1)); return picked||{type:"draw",target:null}; }
 
 async function processBarrierNormalTurnStart(p){
   if(p.skill.id!=="barrier")return;
@@ -721,7 +746,8 @@ async function aiAct(){
     // 主动明牌：每个“正常回合”最多一次；额外回合不会刷新。
     if(p.skill.id==="reveal" && !p.revealUsed){
       const unrevealed=p.hand.filter(c=>!c.revealed);
-      if(unrevealed.length && (p.hand.length>=5 || Math.random()<0.45)){
+      const revealChance=clamp01((p.hand.length>=5?0.72:0.34)*aiProfile(p).skill*(aiDifficulty(p).skillFactor||1));
+      if(unrevealed.length && Math.random()<revealChance){
         const c=chooseLeastUsefulCard(p,unrevealed);
         if(c){
           // 明牌后仍保留在占卜者的情报区，只把显示状态改成“公开（金色）”。
@@ -798,15 +824,7 @@ function addEffectCardToHand(p,card,label="效果摸牌"){
   gainCardToHand(p,card,"skill");
 }
 
-function aiPickBestFromCards(p,cards,count){
-  return [...cards]
-    .sort((a,b)=>{
-      const sa=cardNeedScore(p,a)+p.hand.filter(x=>x.rank===a.rank).length*3;
-      const sb=cardNeedScore(p,b)+p.hand.filter(x=>x.rank===b.rank).length*3;
-      return sb-sa;
-    })
-    .slice(0,count);
-}
+function aiPickBestFromCards(p,cards,count){ const pool=[...cards], chosen=[]; while(chosen.length<count&&pool.length){ const pick=aiScoredChoice(p,pool,c=>cardNeedScore(p,c)+p.hand.filter(x=>x.rank===c.rank).length*3*aiProfile(p).combo); if(!pick)break; chosen.push(pick); pool.splice(pool.indexOf(pick),1); } return chosen; }
 
 async function diceChooseTop(p,lookCount,takeCount,title){
   const top=G.deck.splice(0,lookCount);
@@ -868,23 +886,7 @@ async function discardExactForDice(p,count){
   return cards;
 }
 
-function aiChooseTwoDrawTargets(p){
-  const selfIndex=G.players.indexOf(p);
-  const pool=G.players.map((x,i)=>({x,i}));
-
-  // 自己手牌很少时，允许把其中一个名额给自己补资源。
-  const picks=[];
-  if(p.hand.length<=3 && Math.random()<0.55) picks.push(selfIndex);
-
-  const others=pool
-    .filter(o=>!picks.includes(o.i))
-    .sort((a,b)=>a.x.hand.length-b.x.hand.length);
-
-  while(picks.length<2 && others.length){
-    picks.push(others.shift().i);
-  }
-  return picks.slice(0,2);
-}
+function aiChooseTwoDrawTargets(p){ return aiChooseTargets(p,2,{allowSelf:true,purpose:"draw"}); }
 
 async function resolveDiceFateTurnStart(p){
   if(p.skill.id!=="dice" || G.extraMode)return;
@@ -967,20 +969,9 @@ async function resolveDiceFateTurnStart(p){
   updateTrapArming();
   render();
 }
-function aiShouldExtraDraw(p){
-  if(p.hand.length<=5)return true;
-  const counts=rankCounts(p.hand);
-  return Object.values(counts).some(n=>n>=2) || p.hand.length<9;
-}
+function aiShouldExtraDraw(p){ const profile=aiProfile(p), diff=aiDifficulty(p); if(p.hand.length<=3)return true; const counts=rankCounts(p.hand); const comboReady=Object.values(counts).some(n=>n>=2); let chance=(p.hand.length<=5?0.84:p.hand.length<9?0.58:0.24)*profile.resource*(diff.skillFactor||1); if(comboReady)chance+=0.12*profile.combo; return Math.random()<clamp01(chance); }
 
-function aiArtisanReplace(p,card){
-  const cnt=p.hand.filter(c=>c.rank===card.rank).length;
-  if(cnt>=2)return false;
-  const vals=p.hand.map(c=>RANK_VALUE[c.rank]);
-  const v=RANK_VALUE[card.rank];
-  const near=vals.some(x=>x!==v && Math.abs(x-v)<=1);
-  return !near && p.hand.length>=4;
-}
+function aiArtisanReplace(p,card){ const profile=aiProfile(p), diff=aiDifficulty(p); const cnt=p.hand.filter(c=>c.rank===card.rank).length; if(cnt>=2)return false; const vals=p.hand.map(c=>RANK_VALUE[c.rank]); const v=RANK_VALUE[card.rank]; const near=vals.some(x=>x!==v&&Math.abs(x-v)<=1); if(near||p.hand.length<4)return false; return Math.random()<clamp01(0.48*profile.resource*profile.skill*(diff.skillFactor||1)); }
 
 async function aiDivinationDraw(p){
   // 占卜只替代“正常摸牌阶段的第一张”；额外回合/效果摸牌绝不触发。
@@ -992,11 +983,8 @@ async function aiDivinationDraw(p){
   }
   await aiThink();
   const top=G.deck.splice(0,4);
-  let best=0,bestScore=-1e9;
-  top.forEach((c,i)=>{
-    const sc=cardNeedScore(p,c) + p.hand.filter(x=>x.rank===c.rank).length*3;
-    if(sc>bestScore){bestScore=sc;best=i}
-  });
+  const picked=aiScoredChoice(p,top,c=>cardNeedScore(p,c)+p.hand.filter(x=>x.rank===c.rank).length*3*aiProfile(p).combo);
+  const best=Math.max(0,top.indexOf(picked));
   const chosen=top.splice(best,1)[0];
   gainCardToHand(p,chosen,"normal");
 
@@ -1010,10 +998,8 @@ async function aiDivinationDraw(p){
     const sc=sameKnown*6+sameRankKnown*2;
     if(sc>sinkScore){sinkScore=sc;sinkIndex=i}
   });
-  if(sinkIndex>=0){
-    const sunk=top.splice(sinkIndex,1)[0];
-    putBottom(sunk);
-  }
+  const useIntel=Math.random()<clamp01((aiDifficulty(p).awareness||0.5)*aiProfile(p).control);
+  if(sinkIndex>=0&&useIntel){ const sunk=top.splice(sinkIndex,1)[0]; putBottom(sunk); } else if(!useIntel){ sinkIndex=-1; }
 
   // 削弱版【占卜】：剩余牌不能调整顺序，只能保持原有相对顺序。
   G.deck.unshift(...top);
@@ -1257,21 +1243,7 @@ function pollutionTargetIndices(owner){
   return G.players.map((t,i)=>({t,i})).filter(o=>o.t!==owner && o.t.hand.length>0);
 }
 
-function aiChoosePollutionTarget(owner){
-  const choices=pollutionTargetIndices(owner);
-  if(!choices.length)return null;
-  // 进攻型AI：优先压制最接近清手的玩家；若手牌数接近，优先“引爆”已有污染以立即拖慢节奏。
-  let bestScore=-Infinity,best=[];
-  for(const o of choices){
-    const infected=o.t.hand.some(c=>c.polluted);
-    let score=120-o.t.hand.length*18;
-    if(infected)score+=14;
-    if(infected && o.t.hand.length<=3)score+=18;
-    if(score>bestScore){bestScore=score;best=[o]}
-    else if(score===bestScore)best.push(o);
-  }
-  return best[rand(best.length)].i;
-}
+function aiChoosePollutionTarget(owner){ const choices=pollutionTargetIndices(owner); if(!choices.length)return null; const picked=aiScoredChoice(owner,choices,o=>{ const infected=o.t.hand.some(c=>c.polluted); let score=aiTargetScore(owner,o.t,"pressure"); if(infected)score+=12*aiProfile(owner).control; if(infected&&o.t.hand.length<=3)score+=20*aiProfile(owner).finish; return score; }); return picked?.i??null; }
 
 function choosePollutionTarget(owner){
   return new Promise(resolve=>{
@@ -1366,20 +1338,7 @@ function scoreMove(p, move){
   return s;
 }
 
-function aiBestPlay(p){
-  const cands=enumerateCandidates(p);
-  if(!cands.length)return null;
-  const win=cands.find(c=>c.cards.length===p.hand.length);
-  if(win)return win;
-
-  let best=null,bestScore=-1e9;
-  for(const c of cands){
-    const s=scoreMove(p,c);
-    if(s>bestScore){bestScore=s;best=c}
-  }
-  if(best && best.type==="single" && bestScore<0)return null;
-  return best;
-}
+function aiBestPlay(p){ const cands=enumerateCandidates(p); if(!cands.length)return null; const win=cands.find(c=>c.cards.length===p.hand.length); if(win)return win; const diff=aiDifficulty(p),profile=aiProfile(p),noise=Math.max(0,diff.scoreNoise||0)*Math.max(0.25,profile.variance||1); const ranked=cands.map(c=>({c,score:scoreMove(p,c)+aiMovePersonalityBias(p,c)+(Math.random()*2-1)*noise})).sort((a,b)=>b.score-a.score); let pick=ranked[0]; const window=Math.max(1,Math.min(ranked.length,diff.topChoices||1)); if(window>1&&Math.random()<clamp01(diff.mistakeRate||0))pick=ranked[rand(window)]; const passThreshold=4-(profile.aggression*8); if(pick?.c.type==="single"&&pick.score<passThreshold)return null; return pick?.c||null; }
 
 let hintIndex=0;
 let lastHintHand="";
@@ -1516,21 +1475,9 @@ function canBaseExtraTrigger(p){
 }
 
 
-function aiTrapShouldDraw(owner){
-  // 摸牌在本游戏里不是纯负面：低手牌时更愿意补资源；牌很多时谨慎。
-  if(owner.hand.length<=3)return true;
-  if(owner.hand.length<=5)return Math.random()<0.70;
-  return Math.random()<0.30;
-}
+function aiTrapShouldDraw(owner){ const profile=aiProfile(owner),diff=aiDifficulty(owner); if(owner.hand.length<=2)return true; const base=owner.hand.length<=4?0.72:owner.hand.length<=6?0.46:0.18; return Math.random()<clamp01(base*profile.resource*(diff.skillFactor||1)); }
 
-function aiTrapShouldDiscard(owner){
-  if(owner.hand.length===0)return false;
-  if(owner.hand.length<=2)return false; // 太少时通常需要重新做牌
-  const counts=rankCounts(owner.hand);
-  const loose=owner.hand.some(c=>(counts[c.rank]||0)===1);
-  if(owner.hand.length>=6)return true;
-  return loose && Math.random()<0.75;
-}
+function aiTrapShouldDiscard(owner){ if(owner.hand.length===0||owner.hand.length<=2)return false; const counts=rankCounts(owner.hand),loose=owner.hand.some(c=>(counts[c.rank]||0)===1),profile=aiProfile(owner); if(owner.hand.length>=7)return true; const chance=(loose?0.66:0.28)*(0.65+profile.combo*0.35); return Math.random()<clamp01(chance); }
 
 async function resolveTrapOwnerAdjustment(owner){
   let didDraw=false, didDiscard=false, discardedCard=null;
@@ -1597,18 +1544,7 @@ async function resolveTrapOwnerAdjustment(owner){
 
 
 
-function aiResonanceShouldDiscard(owner){
-  if(owner.hand.length===0)return false;
-  const counts=rankCounts(owner.hand);
-
-  // 优先清掉明显的孤张；手牌较多时更积极整理。
-  const loose=owner.hand.filter(c=>(counts[c.rank]||0)===1);
-  if(owner.hand.length>=6)return true;
-  if(loose.length && owner.hand.length>=3)return true;
-
-  // 手牌很少时保留组合潜力，偶尔才弃。
-  return Math.random()<0.25;
-}
+function aiResonanceShouldDiscard(owner){ if(owner.hand.length===0)return false; const counts=rankCounts(owner.hand),profile=aiProfile(owner); const loose=owner.hand.filter(c=>(counts[c.rank]||0)===1); if(owner.hand.length>=7)return true; if(loose.length&&owner.hand.length>=3)return Math.random()<clamp01(0.62+profile.combo*0.18); return Math.random()<clamp01(0.12+profile.aggression*0.12); }
 
 async function resolveResonanceOwnerDiscard(owner){
   if(owner.hand.length===0)return false;
@@ -1733,10 +1669,7 @@ async function resolveArtisanEffect(p,type){
   }else if(type==="fullhouse"){
     let ts;
     if(p.isAI){
-      const first=aiChooseDrawTarget(p,false);
-      const remain=G.players.map((_,i)=>i).filter(i=>i!==first);
-      remain.sort((a,b)=>G.players[a].hand.length-G.players[b].hand.length);
-      ts=[first,remain[0]];
+      ts=aiChooseTargets(p,2,{allowSelf:false,purpose:"pressure"});
     }else ts=await chooseTwoTargets("葫芦：指定2名玩家各摸1张");
     for(const t of ts)drawTo(G.players[t],1,"skill");
     log(`【牌匠·葫芦】${ts.map(i=>G.players[i].name).join("、")} 各摸1张。`);
@@ -1757,18 +1690,8 @@ async function resolveArtisanEffect(p,type){
   updateTrapArming();
 }
 
-function aiChooseThreatTarget(p){
-  let arr=G.players.map((x,i)=>({x,i})).filter(o=>o.x!==p);
-  arr.sort((a,b)=>a.x.hand.length-b.x.hand.length);
-  return arr[0].i;
-}
-function aiChooseDrawTarget(p,allowSelf){
-  let arr=G.players.map((x,i)=>({x,i})).filter(o=>allowSelf||o.x!==p);
-  // 优先给手牌最少的对手“塞牌”，但如果自己牌很少且需要做牌，偶尔给自己
-  if(allowSelf && p.hand.length<=3 && Math.random()<0.45)return G.players.indexOf(p);
-  const opp=arr.filter(o=>o.x!==p).sort((a,b)=>a.x.hand.length-b.x.hand.length);
-  return opp.length?opp[0].i:arr[0].i;
-}
+function aiChooseThreatTarget(p){ return aiChooseTargets(p,1,{purpose:"control"})[0]; }
+function aiChooseDrawTarget(p,allowSelf){ return aiChooseTargets(p,1,{allowSelf,purpose:"draw"})[0]; }
 
 function updateTrapArming(){
   for(const owner of G.players){
@@ -1904,7 +1827,7 @@ async function endRound(){
       G.field=null;
     }
   }
-  if(G.round%5===0){
+  if(G.round%MATCH_RULES.fieldEveryRounds===0){
     await drawField();
   }
   G.round++;
@@ -2003,9 +1926,9 @@ function render(){
   }
   lastRenderedPhase=phaseKey;
   $("roundNo").textContent=G.round;
-  const roomBadge=$("roomBadge"); if(roomBadge)roomBadge.textContent=G.room?.name||"普通场";
+  const roomBadge=$("roomBadge"); if(roomBadge)roomBadge.textContent=`${G.room?.name||"普通场"} · AI ${G.room?.ai?.label||"标准"}`;
   $("fieldName").textContent=G.field?`${G.field.name}（剩${G.fieldRoundsLeft}轮）`:"无场地";
-  $("fieldDesc").textContent=G.field?G.field.desc:"第5、10、15…轮结束时抽取新场地";
+  $("fieldDesc").textContent=G.field?G.field.desc:fieldScheduleText();
   const mb=$("multNum"); if(mb){mb.textContent=G.multiplier;}
   const p=currentPlayer();
   $("turnText").textContent=(G.extraMode?"额外回合 · ":"")+p.name;
@@ -2593,7 +2516,7 @@ function renderCodex(){
             <div class="codex-hero-stats">
               <span class="codex-stat">${SKILLS.length} 个技能</span>
               <span class="codex-stat">${FIELDS.length} 个场地</span>
-              <span class="codex-stat">V0.31</span>
+              <span class="codex-stat">${GAME_VERSION}</span>
             </div>
           </div>
         </div>
@@ -2637,9 +2560,9 @@ function showRules(){
   const sheet=$("sheet");
 
   const basic=[
-    "大厅分为【新手场 / 普通场 / 高级场】：底注分别为20 / 100 / 500星石；入场门槛分别为0 / 500 / 2000星石。场次只改变星石风险，不改变卡牌规则。",
+    roomRulesText(),
     "4副52张标准扑克混洗，不使用大小王。",
-    "每人开局2张；每个正常回合先摸牌，再进入出牌阶段。",
+    `每人开局${MATCH_RULES.startingHandSize}张；每个正常回合先摸牌，再进入出牌阶段。`,
     "可出：单牌、三带一、四条、葫芦、5张起顺子、6张起连对；【充能】达到6后可出对子。",
     "一次打出4张及以上的合法牌型：获得1个额外回合。",
     "额外回合不摸牌；基础“4张及以上牌型”奖励默认不能在额外回合继续触发，除非技能/场地明确允许。"
@@ -2663,7 +2586,7 @@ function showRules(){
   ];
 
   const field=[
-    "第5、10、15…轮结束时随机抽取一个场地规则。",
+    `每${MATCH_RULES.fieldEveryRounds}轮结束时随机抽取一个场地规则。`,
     "【加时赛】持续1轮：每名玩家先结算正常回合及该回合已经产生的其他额外回合，最后再获得1个场地额外回合。它不会额外开放连锁；普通玩家的额外回合仍不能靠4张以上牌型继续触发，只有技能本身允许连锁的玩家可以在这些额外回合中继续连锁。",
     "清空手牌获胜；技能响应先于胜利判定结算，因此【截胡】可能阻止“5+1”偷家。"
   ];
@@ -4267,17 +4190,17 @@ const AdminPanel = (() => {
 
     const adminResetBeans = document.getElementById("adminResetBeans");
     if (adminResetBeans) adminResetBeans.addEventListener("click", () => {
-      if (confirm("确定重置所有玩家星石为 2000？")) {
-        for (let i = 0; i < beanBalances.length; i++) beanBalances[i] = 2000;
+      if (confirm(`确定重置所有玩家星石为 ${MATCH_RULES.startingBalance}？`)) {
+        for (let i = 0; i < beanBalances.length; i++) beanBalances[i] = MATCH_RULES.startingBalance;
         saveBeanBalances();
         renderStoredBalance();
         if (G) {
           for (let i = 0; i < G.players.length; i++) {
-            G.players[i].beans = 2000;
+            G.players[i].beans = MATCH_RULES.startingBalance;
           }
           render();
         }
-        adminFeedback("所有玩家星石已重置为 2000",adminResetBeans);
+        adminFeedback(`所有玩家星石已重置为 ${MATCH_RULES.startingBalance}`,adminResetBeans);
       }
     });
 
@@ -4305,11 +4228,11 @@ updateLobbyRooms();
 syncLobbyMode();
 
 
-// v4.7 compact menu auto-close
+// V0.33 compact menu auto-close
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".lobby-more-menu button,.topbar-more-menu button").forEach(btn=>btn.addEventListener("click",()=>btn.closest("details")?.removeAttribute("open")));});
 
 
-// v4.10 UI: compact menus close consistently on outside click / Escape / resize.
+// V0.33 UI: compact menus close consistently on outside click / Escape / resize.
 (function initCompactMenuDismiss(){
   const closeMenus=()=>document.querySelectorAll("details.topbar-more[open],details.lobby-more[open]").forEach(el=>el.removeAttribute("open"));
   document.addEventListener("pointerdown",e=>{

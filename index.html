@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#062014" />
 <meta name="description" content="欢乐牌局：支持 1 人对战 3 名 AI 的浏览器卡牌游戏。" />
-<title>欢乐牌局 V0.31 · 1人 vs 3AI</title>
+<title>欢乐牌局 · 1人 vs 3AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;700;900&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=ZCOOL+XiaoWei&display=swap">
@@ -57,7 +57,7 @@
         <div class="lobby-brand">
           <div class="lobby-kicker"><span>♠</span> PARTY CARD <span>♥</span></div>
           <div class="title">欢乐牌局</div>
-          <div class="subtitle">1人 VS 3AI <span class="version-dot">·</span> V0.31 <span class="version-dot">·</span> Build v4.10</div>
+          <div class="subtitle">1人 VS 3AI <span class="version-dot">·</span> <span data-game-version></span></div>
         </div>
         <div class="lobby-wallet">
           <span class="wallet-gem">🔮</span>
@@ -70,7 +70,7 @@
         <div class="room-stage-head">
           <div>
             <div class="room-stage-title">选择牌桌</div>
-            <div class="room-stage-sub">不同场次只改变底注与入场门槛</div>
+            <div class="room-stage-sub">AI 强度随场次提升：休闲 / 标准 / 高手</div>
           </div>
           <div class="room-stage-suits">♣ <span>♦</span> ♠ <span>♥</span></div>
         </div>
@@ -79,7 +79,7 @@
             <div class="room-icon">🌱</div>
             <div class="room-content">
               <div class="room-name">新手场</div>
-              <div class="room-tag">轻松试牌 · 低风险</div>
+              <div class="room-tag">轻松试牌 · AI 休闲</div>
               <div class="room-stake">底注 <b>20</b> 🔮</div>
               <div class="room-entry">不限星石 · 适合熟悉玩法</div>
               <div class="room-enter">进入牌桌</div>
@@ -89,7 +89,7 @@
             <div class="room-icon">♣️</div>
             <div class="room-content">
               <div class="room-name">普通场</div>
-              <div class="room-tag">标准牌局 · 常规收益</div>
+              <div class="room-tag">标准牌局 · AI 标准</div>
               <div class="room-stake">底注 <b>100</b> 🔮</div>
               <div class="room-entry">500 星石以上可入场</div>
               <div class="room-enter">进入牌桌</div>
@@ -99,7 +99,7 @@
             <div class="room-icon">👑</div>
             <div class="room-content">
               <div class="room-name">高级场</div>
-              <div class="room-tag">高倍对局 · 高风险</div>
+              <div class="room-tag">高倍对局 · AI 高手</div>
               <div class="room-stake">底注 <b>500</b> 🔮</div>
               <div class="room-entry">2000 星石以上可入场</div>
               <div class="room-enter">进入牌桌</div>
@@ -292,6 +292,8 @@
 
 <div class="toast" id="toast"></div>
 <div class="save-code-mask" id="saveCodeMask"><div class="save-code-panel"><div class="save-code-head"><div><b id="saveCodeTitle">存档码</b><span id="saveCodeHint">复制后可在其他设备恢复</span></div><button type="button" id="saveCodeClose">×</button></div><textarea id="saveCodeText" spellcheck="false" placeholder="在这里粘贴存档码"></textarea><div class="save-code-actions"><button class="btn btn-sort" id="saveCodeCopy">复制存档码</button><button class="btn btn-play" id="saveCodeApply">导入此存档码</button></div></div></div>
+<script src="assets/js/version.js" defer></script>
+<script src="assets/js/config.js" defer></script>
 <script src="assets/js/loader.js" defer></script>
 <script src="assets/js/game.js" defer></script>
 </body>

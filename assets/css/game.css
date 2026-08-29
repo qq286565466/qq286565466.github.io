@@ -634,7 +634,7 @@ button:disabled{opacity:.42}
 
 
 
-/* ---------- V0.31 UI overlap hardening ---------- */
+/* ---------- UI overlap hardening ---------- */
 .table{overflow:hidden}
 .topbar>*{min-width:0}
 .round-chip,.field-chip,.mult-badge,.topbar-actions{min-width:0}
@@ -1037,7 +1037,7 @@ button:disabled{opacity:.42}
 }
 
 
-/* ---------- V0.31 Lobby visual polish ---------- */
+/* ---------- Lobby visual polish ---------- */
 .start-panel{
   isolation:isolate;
   background:
@@ -1244,7 +1244,7 @@ button:disabled{opacity:.42}
 }
 
 
-/* ---------- V0.31 Rules / Codex modal polish ---------- */
+/* ---------- Rules / Codex modal polish ---------- */
 .modal.info-modal{
   align-items:center;
   padding:24px;
@@ -1527,7 +1527,7 @@ button:disabled{opacity:.42}
   .center-stage{top:42%;transform:translate(-50%,-62%)}
 }
 
-/* ---------- V4.2 UI / animation polish ---------- */
+/* ---------- UI / animation polish ---------- */
 .turn-ind{
   position:relative;overflow:hidden;
   box-shadow:0 10px 28px rgba(0,0,0,.24),inset 0 0 0 1px rgba(255,209,102,.08);
@@ -1621,7 +1621,7 @@ button:disabled{opacity:.42}
   }
 }
 
-/* v4.5 lobby + save code */
+/* lobby + save code */
 .lobby-bottom{grid-template-columns:minmax(260px,1.1fr) minmax(360px,1fr);align-items:stretch;gap:14px}
 .lobby-skill,.lobby-tools-wrap{padding:12px;border-radius:14px;background:rgba(7,38,22,.5);border:1px solid rgba(255,209,102,.12)}
 .lobby-side-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}
@@ -1637,7 +1637,7 @@ button:disabled{opacity:.42}
 .save-code-actions{display:flex;justify-content:flex-end;gap:8px}.save-code-actions .btn{min-width:130px}
 @media(max-width:900px){.lobby-bottom{grid-template-columns:1fr}.lobby-side-tools{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.lobby-side-tools{grid-template-columns:1fr}.lobby-skill,.lobby-tools-wrap{padding:9px}.save-code-panel{padding:13px}.save-code-actions{display:grid;grid-template-columns:1fr}.save-code-actions .btn{width:100%}#saveCodeText{min-height:190px}}
-/* ---------- v4.6 lobby layout refinement ---------- */
+/* ---------- lobby layout refinement ---------- */
 .start-panel{
   background:
     radial-gradient(circle at 50% 28%,rgba(67,157,91,.32),transparent 34%),
@@ -1818,7 +1818,7 @@ button:disabled{opacity:.42}
 }
 
 
-/* ---------- v4.7 compact action menus ---------- */
+/* ---------- compact action menus ---------- */
 .compact-actions{display:flex;align-items:center;gap:6px}
 .topbar-more,.lobby-more{position:relative}
 .topbar-more>summary,.lobby-more>summary{list-style:none;cursor:pointer;user-select:none}
@@ -1840,7 +1840,7 @@ button:disabled{opacity:.42}
 @media(max-width:760px){.lobby-bottom{grid-template-columns:1fr!important}.lobby-more>summary{min-height:50px}.lobby-more-menu{left:0;right:auto;width:min(100%,420px)}}
 @media(max-width:560px){.compact-actions{gap:4px}.compact-actions>.icon-btn,.topbar-more>summary{padding:5px 8px;font-size:11px}.topbar-more-menu{width:166px;right:-58px}.topbar-more-menu .icon-btn{font-size:11px}.lobby-more-menu{grid-template-columns:1fr 1fr;width:100%}.lobby-more>summary small{font-size:8px}}
 
-/* ---------- v4.8 layout refinement ---------- */
+/* ---------- layout refinement ---------- */
 /* desktop lobby: tighter hierarchy, less dead space */
 .lobby{width:min(1080px,100%);grid-template-rows:auto minmax(0,1fr) auto;gap:13px;padding-top:clamp(14px,2.2vh,24px)}
 .lobby-top{padding:10px 12px;border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 48%),rgba(3,26,14,.34);border:1px solid rgba(255,209,102,.10)}
@@ -1927,7 +1927,7 @@ button:disabled{opacity:.42}
   #hand{min-height:60px!important;max-height:64px;padding-top:7px!important}#hand .card{width:42px!important;height:58px!important}
   .sel-text{display:none!important}.actions .btn{height:34px!important;min-height:34px!important;font-size:9px!important}.bottom-zone{padding-top:2px!important;gap:2px!important}
 }
-/* ---------- v4.9 mobile minimal UI ---------- */
+/* ---------- mobile minimal UI ---------- */
 @media(max-width:620px){
   /* lobby: remove secondary decoration/text */
   .lobby{gap:6px!important;padding:6px 6px calc(8px + env(safe-area-inset-bottom))!important}
@@ -1983,7 +1983,7 @@ button:disabled{opacity:.42}
   .topbar{min-height:31px!important}.bottom-zone{gap:2px!important}#hand{min-height:55px!important;max-height:58px!important;padding-top:5px!important}#hand .card{width:40px!important;height:55px!important}.actions .btn{height:31px!important;min-height:31px!important}#skillBtn,#sortBtn{height:27px!important;min-height:27px!important}
 }
 
-/* ---------- v4.10 UI consolidation + bug fixes ---------- */
+/* ---------- UI consolidation + bug fixes ---------- */
 /* shared overlays: avoid viewport overflow */
 .topbar-more-menu,.lobby-more-menu{max-height:min(70vh,420px);overflow:auto;overscroll-behavior:contain}
 .sheet{max-height:min(86dvh,760px)}
@@ -2056,7 +2056,7 @@ button:disabled{opacity:.42}
   .sheet{max-height:calc(100dvh - env(safe-area-inset-top))}
 }
 
-/* ---------- v4.10 lobby repair ---------- */
+/* ---------- lobby repair ---------- */
 /* The game table intentionally locks gestures, but the lobby itself must remain vertically scrollable on touch devices. */
 html.lobby-mode,body.lobby-mode{touch-action:pan-y}
 body.lobby-mode .start-panel{
@@ -2112,7 +2112,7 @@ body.lobby-mode .start-panel{
   .lobby-wallet b{max-width:9ch}
 }
 
-/* v4.11 startup resource loader */
+/* startup resource loader */
 html.boot-loading,html.boot-loading body{overflow:hidden}
 .boot-loader{
   position:fixed;inset:0;z-index:99999;
@@ -2177,4 +2177,30 @@ html.boot-loading,html.boot-loading body{overflow:hidden}
 }
 @media(prefers-reduced-motion:reduce){
   .boot-loader,.boot-loader-bar,.boot-loader-skip,.boot-loader-retry{transition:none!important}
+}
+
+
+/* ---------- V0.35 lobby skill picker alignment fix ---------- */
+.skill-picker-trigger{justify-content:flex-start}
+.skill-picker-copy{flex:1 1 auto;min-width:0;text-align:left}
+.skill-picker-arrow{margin-left:auto;flex:0 0 auto}
+
+
+/* ---------- V0.36 lobby more-card height fix ---------- */
+/* Wide desktop: align the card with the actual skill-picker button, including the left panel's 12px bottom inset. */
+@media (min-width:901px){
+  .lobby-bottom{align-items:end!important}
+  .lobby-skill{align-self:stretch}
+  .lobby-more{align-self:end!important;height:auto!important;margin-bottom:12px!important}
+  .lobby-more>summary{height:55px!important;min-height:55px!important;max-height:55px!important}
+}
+/* Tablet keeps its stacked/intermediate grid without vertical stretching. */
+@media (min-width:761px) and (max-width:900px){
+  .lobby-more{align-self:end!important;height:auto!important;margin-bottom:0!important}
+  .lobby-more>summary{height:54px!important;min-height:54px!important;max-height:54px!important}
+}
+/* Keep the compact mobile control height owned by the mobile layout layer. */
+@media (max-width:760px){
+  .lobby-more{align-self:auto!important;height:auto!important;margin-bottom:0!important}
+  .lobby-more>summary{height:42px!important;min-height:42px!important;max-height:42px!important}
 }
