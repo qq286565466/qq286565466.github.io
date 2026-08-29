@@ -11,7 +11,14 @@
     "assets/avatars/opponent-yingjian.webp",
     "assets/avatars/opponent-qingce.webp",
     "assets/avatars/opponent-chiyan.webp",
-    "assets/avatars/opponent-zixian.webp"
+    "assets/avatars/opponent-zixian.webp",
+    // V0.38：大厅品牌与入口图标也进入启动预加载，避免首次显示时闪烁。
+    "assets/icons/xingju-brand.webp",
+    "assets/icons/xingju-beginner.webp",
+    "assets/icons/xingju-normal.webp",
+    "assets/icons/xingju-advanced.webp",
+    "assets/icons/xingju-rules.webp",
+    "assets/icons/xingju-more.webp"
   ];
 
   const FONT_FAMILIES = [
@@ -59,7 +66,7 @@
   function preloadFont(family) {
     if (!document.fonts || typeof document.fonts.load !== "function") return Promise.resolve(family);
     return withTimeout(
-      document.fonts.load(`16px "${family}"`, "欢乐牌局 PARTY CARD 1234567890"),
+      document.fonts.load(`16px "${family}"`, "星局 PARTY CARD 1234567890"),
       15000,
       family
     ).then(fonts => {

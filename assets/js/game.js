@@ -68,6 +68,8 @@ const FIELDS = [
 let G = null;
 let selected = new Set();
 let aiTimer = null;
+// V0.39：只托管真人座位（0号位），不改变玩家身份，也不写入存档。
+let trusteeEnabled = false;
 const PLAYER_AVATAR="./assets/avatars/avatar-player-modern.webp";
 const AI_FALLBACK_PROFILE=Object.freeze({style:"均衡应战",desc:"在资源、组合与压制之间保持平衡。",aggression:0.75,combo:1,finish:1,control:1,resource:1,skill:1,variance:1,humanFocus:0});
 const OPPONENTS=[
@@ -99,7 +101,11 @@ const rand = n => Math.floor(Math.random()*n);
 const rollD6 = () => 1+rand(6);
 
 const AI_THINK_MS = MATCH_RULES.aiThinkMs;
+const TRUSTEE_THINK_MS = MATCH_RULES.trusteeThinkMs ?? 900;
 const aiThink = () => sleep(AI_THINK_MS);
+// AI 对手和真人托管共用决策逻辑，但真人托管可以使用更短的思考时间。
+const aiDecisionThink = p => sleep(p?.isAI ? AI_THINK_MS : TRUSTEE_THINK_MS);
+function isAIControlled(p){ return !!p && (p.isAI || (trusteeEnabled && G?.players?.[0]===p)); }
 const clamp01=v=>Math.max(0,Math.min(1,v));
 function aiProfile(p){ return p?.aiProfile||AI_FALLBACK_PROFILE; }
 function aiDifficulty(p){ return p?.aiDifficulty||G?.room?.ai||{label:"标准",mistakeRate:0.12,scoreNoise:7,topChoices:2,awareness:0.82,skillFactor:1}; }
@@ -199,7 +205,10 @@ function showTurnBanner(p,extra=false){
   if(!layer)return;
   const el=document.createElement("div");
   el.className=`fx-turn-banner play${p.isAI?"":" human"}${extra?" extra":""}`;
-  el.textContent=extra?`${p.name} · 额外回合`:`${p.name} · ${p.isAI?"行动":"轮到你"}`;
+  const trusteeHuman=!p.isAI&&isAIControlled(p);
+  el.textContent=extra
+    ? `${p.name} · ${trusteeHuman?"AI托管额外回合":"额外回合"}`
+    : `${p.name} · ${p.isAI?"行动":trusteeHuman?"AI托管":"轮到你"}`;
   layer.appendChild(el);
   setTimeout(()=>el.remove(),1050);
 }
@@ -269,7 +278,7 @@ function base64ToUtf8(text){
 function createSaveCode(){ return SAVE_CODE_PREFIX+utf8ToBase64(JSON.stringify(buildPortableSave())); }
 function parseSaveCode(code){
   const clean=String(code||"").trim().replace(/\s+/g,"");
-  if(!clean.startsWith(SAVE_CODE_PREFIX))throw new Error("不是有效的欢乐牌局存档码");
+  if(!clean.startsWith(SAVE_CODE_PREFIX))throw new Error("不是有效的星局存档码");
   let data; try{ data=JSON.parse(base64ToUtf8(clean.slice(SAVE_CODE_PREFIX.length))); }catch(e){ throw new Error("存档码损坏或复制不完整"); }
   validatePortableSave(data); return data;
 }
@@ -364,6 +373,7 @@ function updateLobbyRooms(){
 
 function newGame(roomId=selectedRoomId){
   clearTimeout(aiTimer);
+  trusteeEnabled=false;
   expIntel.clear();
   if(ROOMS[roomId]) selectedRoomId=roomId;
   const room=currentRoom();
@@ -591,6 +601,36 @@ async function processBarrierNormalTurnStart(p){
 
 function currentPlayer(){ return G.players[G.current]; }
 
+// 同步顶部托管按钮。按钮只反映当前对局状态，不参与存档。
+function syncTrusteeUI(){
+  const btn=$("trusteeBtn");
+  if(!btn)return;
+  btn.classList.toggle("active",trusteeEnabled);
+  btn.setAttribute("aria-pressed",trusteeEnabled?"true":"false");
+  btn.title=trusteeEnabled?"AI托管：已开启，点击关闭":"AI托管：关闭，点击开启";
+  const label=btn.querySelector(".trustee-label");
+  if(label)label.textContent=trusteeEnabled?"托管中":"托管";
+}
+
+function setTrusteeEnabled(enabled){
+  if(!G || G.gameOver)return;
+  trusteeEnabled=!!enabled;
+  selected.clear();
+
+  // 关闭时取消“真人座位”尚未执行的自动出牌计时；不会打断已经提交的动作。
+  if(!trusteeEnabled && currentPlayer()===G.players[0]){
+    clearTimeout(aiTimer);
+    aiTimer=null;
+  }
+
+  log(`🤖 AI托管已${trusteeEnabled?"开启":"关闭"}。`,"system");
+  syncTrusteeUI();
+  render();
+
+  // 在真人当前出牌阶段开启时，不必等到下个回合，直接接管当前操作。
+  if(trusteeEnabled && currentPlayer()===G.players[0] && G.phase==="play")scheduleAI();
+}
+
 function fieldActive(id){ return G.field && G.field.id===id && G.fieldRoundsLeft>0; }
 
 async function startTurn(extra){
@@ -605,7 +645,7 @@ async function startTurn(extra){
     log(`↪ ${p.name} 进入额外回合（不摸牌）。`, "action");
     render();
     showTurnBanner(p,true);
-    if(p.isAI) scheduleAI();
+    if(isAIControlled(p)) scheduleAI();
     return;
   }
 
@@ -621,7 +661,7 @@ async function startTurn(extra){
   render();
 
   // 轮到人类玩家的提示音 + 视觉
-  if(!p.isAI && typeof AudioSys!=="undefined"){
+  if(!p.isAI && !trusteeEnabled && typeof AudioSys!=="undefined"){
     AudioSys.SFX.yourTurn();
     AudioSys.FX.yourTurn();
     AudioSys.VO.yourTurn();
@@ -629,7 +669,7 @@ async function startTurn(extra){
 
   // 新版【骰命】：每个自己的正常回合开始时公开投1D6。
   if(p.skill.id==="dice"){
-    if(p.isAI) await aiThink();
+    if(isAIControlled(p)) await aiDecisionThink(p);
     await resolveDiceFateTurnStart(p);
     if(G.gameOver)return;
   }
@@ -649,8 +689,8 @@ async function startTurn(extra){
   // 充能2：人类可选，AI简单决策
   if(p.skill.id==="charge" && p.energy>=2){
     let take=false;
-    if(p.isAI){
-      await aiThink();
+    if(isAIControlled(p)){
+      await aiDecisionThink(p);
       take = aiShouldExtraDraw(p);
     }
     else take = await askYesNo("充能 · 额外摸牌", `当前充能 ${p.energy}。是否在本次正常摸牌额外摸1张？`);
@@ -662,7 +702,7 @@ async function startTurn(extra){
 
   // 占卜：只替代本次正常摸牌阶段的“第一张”
   if(p.skill.id==="divine" && !G.extraMode){
-    if(p.isAI) await aiDivinationDraw(p);
+    if(isAIControlled(p)) await aiDivinationDraw(p);
     else await humanDivinationDraw(p);
     if(totalNormalDraw>1) drawTo(p,totalNormalDraw-1,"normal");
   }else{
@@ -678,8 +718,8 @@ async function startTurn(extra){
     p.barrierSiftPending=false;
     const last=justDrawn[justDrawn.length-1];
     let replace=false;
-    if(p.isAI){
-      await aiThink();
+    if(isAIControlled(p)){
+      await aiDecisionThink(p);
       replace=aiArtisanReplace(p,last);
     }else{
       replace=await askYesNo("轮转结界 · 换牌",`刚摸到 ${last.rank}${last.suit}。是否将它置于牌底并重摸1张？`);
@@ -699,8 +739,8 @@ async function startTurn(extra){
   if(p.skill.id==="artisan" && justDrawn.length){
     const last=justDrawn[justDrawn.length-1];
     let replace=false;
-    if(p.isAI){
-      await aiThink();
+    if(isAIControlled(p)){
+      await aiDecisionThink(p);
       replace=aiArtisanReplace(p,last);
     }
     else replace=await askYesNo("牌匠 · 换牌", `刚摸到 ${last.rank}${last.suit}。是否将它置于牌底并重摸1张？`);
@@ -719,28 +759,32 @@ async function startTurn(extra){
 
   G.phase="play";
   render();
-  if(p.isAI) scheduleAI();
+  if(isAIControlled(p)) scheduleAI();
 }
 
 function scheduleAI(){
   clearTimeout(aiTimer);
+  const p=currentPlayer();
+  if(!p || !isAIControlled(p) || G.phase!=="play")return;
+  const delay=p.isAI?AI_THINK_MS:TRUSTEE_THINK_MS;
   aiTimer=setTimeout(()=>{
     aiTimer=null;
     aiAct();
-  },AI_THINK_MS);
+  },delay);
 }
 
 async function aiAct(){
   if(!G || G.gameOver)return;
   const p=currentPlayer();
-  if(!p || !p.isAI || G.phase!=="play")return;
+  if(!p || !isAIControlled(p) || G.phase!=="play")return;
 
   try{
     // 【结界】只在自己的正常回合、且冷却允许时施放。
     if(p.skill.id==="barrier" && !G.extraMode && p.barrierCanCast){
       const plan=aiBarrierChoice(p);
       await activateBarrier(p,plan.type,plan.target);
-      await aiThink();
+      await aiDecisionThink(p);
+      if(!p.isAI && !trusteeEnabled)return;
     }
 
     // 主动明牌：每个“正常回合”最多一次；额外回合不会刷新。
@@ -768,8 +812,9 @@ async function aiAct(){
             900
           );
 
-          // AI用了主动技能后，再停约2秒，模拟重新评估手牌再出牌。
-          await aiThink();
+          // 自动控制使用各自的思考时间，随后重新评估手牌再出牌。
+          await aiDecisionThink(p);
+          if(!p.isAI && !trusteeEnabled)return;
         }
       }
     }
@@ -834,7 +879,7 @@ async function diceChooseTop(p,lookCount,takeCount,title){
   }
 
   let chosen=[];
-  if(p.isAI){
+  if(isAIControlled(p)){
     chosen=aiPickBestFromCards(p,top,takeCount);
   }else{
     chosen=await chooseMultipleCardsFromList(title,top,takeCount);
@@ -859,7 +904,7 @@ async function discardExactForDice(p,count){
   if(actual<=0)return [];
 
   let cards=[];
-  if(p.isAI){
+  if(isAIControlled(p)){
     const pool=[...p.hand];
     for(let i=0;i<actual;i++){
       const c=chooseLeastUsefulCard({...p, hand:pool},pool);
@@ -915,7 +960,7 @@ async function resolveDiceFateTurnStart(p){
 
   else if(d===3){
     const selfIndex=G.players.indexOf(p);
-    const t=p.isAI
+    const t=isAIControlled(p)
       ? aiChooseDrawTarget(p,true)
       : await chooseTarget("骰命·3：必须指定一名玩家",true);
 
@@ -930,7 +975,7 @@ async function resolveDiceFateTurnStart(p){
 
   else if(d===4){
     const selfIndex=G.players.indexOf(p);
-    const ts=p.isAI
+    const ts=isAIControlled(p)
       ? aiChooseTwoDrawTargets(p)
       : await chooseTwoTargets("骰命·4：必须指定两名不同玩家");
 
@@ -981,7 +1026,7 @@ async function aiDivinationDraw(p){
     log(`${p.name} 的【占卜4】因牌堆不足4张，改为正常摸1张。`);
     return;
   }
-  await aiThink();
+  await aiDecisionThink(p);
   const top=G.deck.splice(0,4);
   const picked=aiScoredChoice(p,top,c=>cardNeedScore(p,c)+p.hand.filter(x=>x.rank===c.rank).length*3*aiProfile(p).combo);
   const best=Math.max(0,top.indexOf(picked));
@@ -1086,7 +1131,7 @@ async function resolveDivinationIntel(p){
     seen.push(`${target.name}：${c.rank}${c.suit}`);
   }
   log(`${p.name} 在回合结束时获得了一轮信息。`);
-  if(!p.isAI){
+  if(!p.isAI && !trusteeEnabled){
     render();
     await showEventOverlay("skill","私人情报","【占卜】",seen.join("　｜　"),1800);
   }
@@ -1270,12 +1315,12 @@ async function resolvePollutionAfterSingle(owner){
   if(!choices.length)return;
 
   let use=true;
-  if(!owner.isAI){
+  if(!isAIControlled(owner)){
     use=await askYesNo("污染 · 投放", "你刚在正常回合打出单牌。是否发动【污染】攻击一名其他玩家？");
   }
   if(!use)return;
 
-  const targetIndex=owner.isAI?aiChoosePollutionTarget(owner):await choosePollutionTarget(owner);
+  const targetIndex=isAIControlled(owner)?aiChoosePollutionTarget(owner):await choosePollutionTarget(owner);
   if(targetIndex===null || targetIndex===undefined)return;
   const target=G.players[targetIndex];
   const existing=target.hand.find(c=>c.polluted);
@@ -1482,11 +1527,11 @@ function aiTrapShouldDiscard(owner){ if(owner.hand.length===0||owner.hand.length
 async function resolveTrapOwnerAdjustment(owner){
   let didDraw=false, didDiscard=false, discardedCard=null;
 
-  if(owner.isAI) await aiThink();
+  if(isAIControlled(owner)) await aiDecisionThink(owner);
 
   // “是否摸1张”和“是否弃1张”是两个相互独立的选择。
   let chooseDraw;
-  if(owner.isAI) chooseDraw=aiTrapShouldDraw(owner);
+  if(isAIControlled(owner)) chooseDraw=aiTrapShouldDraw(owner);
   else chooseDraw=await askYesNo("截胡 · 自我调整", "【截胡】处罚已触发。你是否让自己额外摸1张？");
 
   if(chooseDraw){
@@ -1498,11 +1543,11 @@ async function resolveTrapOwnerAdjustment(owner){
 
   if(owner.hand.length>0){
     let chooseDiscard;
-    if(owner.isAI) chooseDiscard=aiTrapShouldDiscard(owner);
+    if(isAIControlled(owner)) chooseDiscard=aiTrapShouldDiscard(owner);
     else chooseDiscard=await askYesNo("截胡 · 自我调整", "你是否再弃1张手牌？");
 
     if(chooseDiscard){
-      if(owner.isAI){
+      if(isAIControlled(owner)){
         discardedCard=chooseLeastUsefulCard(owner);
       }else{
         discardedCard=await chooseDiscardCard(owner);
@@ -1550,8 +1595,8 @@ async function resolveResonanceOwnerDiscard(owner){
   if(owner.hand.length===0)return false;
 
   let doDiscard;
-  if(owner.isAI){
-    await aiThink();
+  if(isAIControlled(owner)){
+    await aiDecisionThink(owner);
     doDiscard=aiResonanceShouldDiscard(owner);
   }else{
     doDiscard=await askYesNo(
@@ -1566,7 +1611,7 @@ async function resolveResonanceOwnerDiscard(owner){
   }
 
   let card;
-  if(owner.isAI){
+  if(isAIControlled(owner)){
     card=chooseLeastUsefulCard(owner);
   }else{
     card=await chooseDiscardCard(owner);
@@ -1662,13 +1707,13 @@ async function grantExtraTurns(p,count,source){
 
 async function resolveArtisanEffect(p,type){
   if(type==="triple1"){
-    const t=p.isAI?aiChooseDrawTarget(p,true):await chooseTarget("三带一：指定1名玩家摸1张",true);
+    const t=isAIControlled(p)?aiChooseDrawTarget(p,true):await chooseTarget("三带一：指定1名玩家摸1张",true);
     drawTo(G.players[t],1,"skill"); log(`【牌匠·三带一】${G.players[t].name} 摸1张。`);
     render();
     await showEventOverlay("penalty","牌型处罚","【三带一】",`${G.players[t].name} 被指定额外摸1张。`,1050);
   }else if(type==="fullhouse"){
     let ts;
-    if(p.isAI){
+    if(isAIControlled(p)){
       ts=aiChooseTargets(p,2,{allowSelf:false,purpose:"pressure"});
     }else ts=await chooseTwoTargets("葫芦：指定2名玩家各摸1张");
     for(const t of ts)drawTo(G.players[t],1,"skill");
@@ -1681,7 +1726,7 @@ async function resolveArtisanEffect(p,type){
     render();
     await showEventOverlay("penalty","牌型处罚","【顺子】","除出牌者外，其他所有玩家各摸1张。",1150);
   }else if(type==="four"){
-    const t=p.isAI?aiChooseThreatTarget(p):await chooseTarget("四条：指定1名玩家下个正常回合跳过出牌阶段",false);
+    const t=isAIControlled(p)?aiChooseThreatTarget(p):await chooseTarget("四条：指定1名玩家下个正常回合跳过出牌阶段",false);
     G.players[t].skipPlay=true;
     log(`【牌匠·四条】${G.players[t].name} 下个正常回合将跳过出牌阶段。`);
     render();
@@ -1737,7 +1782,7 @@ async function finishTurn(){
 
   // 强制清仓只在正常回合结束时触发
   if(!G.extraMode && fieldActive("discard") && p.hand.length>0){
-    const card = p.isAI ? chooseLeastUsefulCard(p) : await chooseDiscardCard(p);
+    const card = isAIControlled(p) ? chooseLeastUsefulCard(p) : await chooseDiscardCard(p);
     if(!card){
       log(`【强制清仓】${p.name} 无牌可弃，跳过。`, "field");
     }else{
@@ -1917,7 +1962,8 @@ function render(){
   const table=document.querySelector(".table");
   const phaseKey=`${G.current}:${G.phase}:${G.extraMode?1:0}`;
   if(table){
-    table.classList.toggle("human-turn",G.current===0&&G.phase==="play"&&!G.gameOver);
+    table.classList.toggle("human-turn",G.current===0&&G.phase==="play"&&!G.gameOver&&!trusteeEnabled);
+    table.classList.toggle("trustee-on",trusteeEnabled);
     if(phaseKey!==lastRenderedPhase){
       table.classList.remove("phase-change");
       void table.offsetWidth;
@@ -1931,7 +1977,8 @@ function render(){
   $("fieldDesc").textContent=G.field?G.field.desc:fieldScheduleText();
   const mb=$("multNum"); if(mb){mb.textContent=G.multiplier;}
   const p=currentPlayer();
-  $("turnText").textContent=(G.extraMode?"额外回合 · ":"")+p.name;
+  syncTrusteeUI();
+  $("turnText").textContent=(G.extraMode?"额外回合 · ":"")+p.name+(trusteeEnabled&&p===G.players[0]?" · AI托管":"");
   $("phaseText").textContent=G.phase==="play"?"出牌":G.phase==="draw"?"摸牌":G.phase;
 
   const lp=$("lastPlay");
@@ -2029,7 +2076,7 @@ function render(){
     div.dataset.cardId=String(c.id);
     div.innerHTML=`<span class="rank">${c.rank}</span><span class="suit">${c.suit}</span>`;
     div.onclick=()=>{
-      if(G.current!==0||G.phase!=="play"||G.gameOver)return;
+      if(G.current!==0||G.phase!=="play"||G.gameOver||trusteeEnabled)return;
       selected.has(c.id)?selected.delete(c.id):selected.add(c.id);render();
     };
     hand.appendChild(div);
@@ -2038,9 +2085,11 @@ function render(){
   const mine=G.players[0];
   const chosen=mine.hand.filter(c=>selected.has(c.id));
   const cl=classify(chosen,mine);
-  $("selectionText").textContent=chosen.length?(cl.ok?`已选 ${chosen.length} 张：${cl.name}`:`已选 ${chosen.length} 张：${cl.msg}`):"选择手牌后出牌。";
+  $("selectionText").textContent=trusteeEnabled
+    ? (G.current===0?"AI托管中 · 正在自动决策":"AI托管已开启 · 等待你的回合")
+    : (chosen.length?(cl.ok?`已选 ${chosen.length} 张：${cl.name}`:`已选 ${chosen.length} 张：${cl.msg}`):"选择手牌后出牌。");
 
-  const canHuman=G.current===0 && G.phase==="play" && !G.gameOver;
+  const canHuman=G.current===0 && G.phase==="play" && !G.gameOver && !trusteeEnabled;
   $("playBtn").disabled=!canHuman || !cl.ok;
   $("hintBtn").disabled=!canHuman;
   $("passBtn").disabled=!canHuman;
@@ -2145,7 +2194,7 @@ populateSkillSelect();
 ensureLogDrawerPortal();
 
 $("playBtn").onclick=async()=>{
-  if(!G||G.current!==0||G.phase!=="play")return;
+  if(!G||G.current!==0||G.phase!=="play"||trusteeEnabled)return;
   const p=G.players[0], cards=p.hand.filter(c=>selected.has(c.id));
   const cl=classify(cards,p);
   if(!cl.ok){toast(cl.msg);return}
@@ -2153,7 +2202,7 @@ $("playBtn").onclick=async()=>{
 };
 $("hintBtn").onclick=hint;
 $("passBtn").onclick=async()=>{
-  if(!G||G.current!==0||G.phase!=="play")return;
+  if(!G||G.current!==0||G.phase!=="play"||trusteeEnabled)return;
   if(typeof AudioSys!=="undefined"){
     AudioSys.SFX.pass();
     AudioSys.VO.pass();
@@ -2166,7 +2215,7 @@ $("sortBtn").onclick=()=>{
   render();
 };
 $("skillBtn").onclick=async()=>{
-  if(!G||G.current!==0||G.phase!=="play")return;
+  if(!G||G.current!==0||G.phase!=="play"||trusteeEnabled)return;
   const p=G.players[0];
 
   if(p.skill.id==="barrier"){
@@ -2191,6 +2240,8 @@ $("skillBtn").onclick=async()=>{
 };
 function returnToStart(){
   clearTimeout(aiTimer);
+  trusteeEnabled=false;
+  syncTrusteeUI();
   G=null;
   selected.clear();
   closeModal();
@@ -2206,6 +2257,7 @@ function replayGame(){
 }
 
 $("restartBtn").onclick=returnToStart;
+$("trusteeBtn").onclick=()=>setTrusteeEnabled(!trusteeEnabled);
 $("skillPickerBtn").onclick=showSkillPicker;
 document.querySelectorAll(".room-card[data-room]").forEach(card=>{
   card.onclick=()=>{
@@ -2563,6 +2615,7 @@ function showRules(){
     roomRulesText(),
     "4副52张标准扑克混洗，不使用大小王。",
     `每人开局${MATCH_RULES.startingHandSize}张；每个正常回合先摸牌，再进入出牌阶段。`,
+    "对局顶部可随时开启【AI托管】：开启后系统自动操作你的座位；关闭后恢复手动操作。托管不会改变你的玩家身份和结算。",
     "可出：单牌、三带一、四条、葫芦、5张起顺子、6张起连对；【充能】达到6后可出对子。",
     "一次打出4张及以上的合法牌型：获得1个额外回合。",
     "额外回合不摸牌；基础“4张及以上牌型”奖励默认不能在额外回合继续触发，除非技能/场地明确允许。"
